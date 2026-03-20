@@ -1,0 +1,32 @@
+:root{
+  --topbar-h: 56px;
+  --bottombar-h: 56px; /* un poco más alto para dedo */
+}
+
+/* Respeta el notch / barra de gestos (iOS) */
+body{
+  padding-top: var(--topbar-h);
+  padding-bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+}
+
+/* Barra inferior: permite scroll horizontal si no caben los botones */
+.bottombar{
+  height: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottombar .bottombar-scroll{
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch targets (mínimo cómodo en móvil) */
+.bottombar .btn{
+  width: 44px;
+  height: 40px;
+  border-radius: 12px;
+  padding: 0;
+  touch-action: manipulation;
+}

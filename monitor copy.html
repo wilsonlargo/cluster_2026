@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monitor</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <style>
+    :root {
+      --topbar-h: 56px;
+      --bottombar-h: 56px;
+    }
+
+    body {
+      padding-top: var(--topbar-h);
+      padding-bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+      background: var(--bs-light);
+    }
+
+    .bottombar {
+      height: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      border-top: 1px solid rgba(0, 0, 0, .08);
+      background: #fff;
+    }
+
+    .bottombar-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .bottombar .btn {
+      width: 44px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      padding: 0;
+      touch-action: manipulation;
+    }
+
+    .bottombar .bi {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .vsep {
+      width: 1px;
+      height: 26px;
+      background: rgba(0, 0, 0, .12);
+      margin: 0 .5rem;
+    }
+
+    .badge .btn-close {
+      transform: scale(.75);
+      margin-left: .25rem;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom fixed-top" style="min-height: var(--topbar-h);">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="monitor.html">
+        <i class="bi bi-speedometer2"></i><span>Monitor</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuTop"
+        aria-controls="menuTop" aria-expanded="false" aria-label="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="menuTop">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="monitor.html"><i class="bi bi-speedometer2 me-1"></i>Monitor</a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar3 text-muted"></i>
+          <select id="selectYear" class="form-select form-select-sm" style="width:120px;" aria-label="Seleccionar año">
+            <option value="" selected>Cargando…</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container-fluid py-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div id="monitorAlert" class="mb-3"></div>
+
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2 text-info">
+            <i class="bi bi-activity"></i>
+            <div class="fw-semibold  fs-5">Casos</div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+  <div id="caseInfo" class="text-muted small">Sin casos</div>
+  <button id="btnOpenAudit" type="button" class="btn btn-outline-secondary btn-sm" title="Filtros" aria-label="Filtros">
+    <i class="bi bi-funnel"></i>
+  </button>
+</div>
+        </div>
+
+        <div class="row g-3">
+
+          <div class="col-12 col-md-4">
+            <label class="form-label">Fecha evento</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+              <input id="fechaEvento" type="date" class="form-control" />
+            </div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label">Macrotipo</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-tags"></i></span>
+              <select id="selectMacrotipo" class="form-select">
+                <option value="">Cargando…</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-floating">
+              <textarea id="detalle" class="form-control" placeholder="Detalle" style="height:160px;"></textarea>
+              <label for="detalle">Detalle del caso</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="d-flex align-items-center justify-content-between">
+              <label class="form-label mb-0">Subtipos</label>
+              <button id="btnEditSubtipos" class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal"
+                data-bs-target="#modalSubtipos" title="Editar subtipos" aria-label="Editar subtipos">
+                <i class="bi bi-list-check"></i>
+              </button>
+            </div>
+            <div id="subtiposBadges" class="d-flex flex-wrap gap-2 mt-2"></div>
+          </div>
+
+
+
+          <!-- detalle_lugar -->
+          <div class="col-12">
+            <div class="form-floating">
+              <textarea id="detalleLugar" class="form-control" style="height: 110px"
+                placeholder="detalle_lugar"></textarea>
+              <label for="detalleLugar">Detalle del lugar</label>
+            </div>
+          </div>
+
+          <!-- TERRITORIALIZACIÓN -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <label class="form-label mb-0 text-dark fs-5 fw-bold">Territorialización</label>
+              <span class="text-muted small"><i class="bi bi-geo-alt"></i></span>
+            </div>
+
+            <div class="mt-2">
+              <div id="caseDeptInfo" class="text-muted small">Departamentos: —</div>
+              <div id="caseMacroInfo" class="text-muted small">Macroregiones: —</div>
+            </div>
+
+            <div class="row g-2 mt-2">
+              <div class="col-12 col-md-5">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-map"></i></span>
+                  <select id="selectDepartamento" class="form-select" aria-label="Departamento">
+                    <option value="">Cargando…</option>
+                  </select>
+                </div>
+                <div id="deptoMacroInfo" class="form-text">Macroregión (depto): —</div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-geo"></i></span>
+                  <select id="selectMunicipio" class="form-select" aria-label="Municipio">
+                    <option value="">Selecciona un departamento</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-1 d-grid">
+                <button style="height: 35px;" id="btnAddLugar" class="btn btn-outline-primary" type="button" title="Agregar municipio"
+                  aria-label="Agregar municipio">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+            </div>
+            <div id="lugaresBadges" class="d-flex flex-wrap gap-2 mt-2"></div>
+            <hr class="border-2">
+          </div>
+
+          <!-- PUEBLOS (catálogo) -->
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Pueblos</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-people"></i></span>
+              <select id="puebloNew" class="form-select" aria-label="Agregar pueblo" title="Seleccionar de la lista">
+                <option value="">Cargando…</option>
+              </select>
+            </div>
+            <div id="pueblosBadges" class="d-flex flex-wrap gap-2 mt-2"></div>
+          </div>
+
+          <!-- POBLACIÓN -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge"></i>
+                <div class="fw-semibold">Población</div>
+              </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+              <div class="col-6 col-lg-3">
+                <label class="form-label"># Personas</label>
+                <input id="npersonas" type="number" min="0" step="1" class="form-control" value="0">
+              </div>
+              <div class="col-6 col-lg-3">
+                <label class="form-label"># Mujeres</label>
+                <input id="nmujeres" type="number" min="0" step="1" class="form-control" value="0">
+              </div>
+              <div class="col-6 col-lg-3">
+                <label class="form-label"># Hombres</label>
+                <input id="nhombres" type="number" min="0" step="1" class="form-control" value="0">
+              </div>
+              <div class="col-6 col-lg-3">
+                <label class="form-label"># Menores</label>
+                <input id="nmenores" type="number" min="0" step="1" class="form-control" value="0">
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ACTORES -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-megaphone"></i>
+                <div class="fw-semibold">Actores</div>
+              </div>
+              <div class="text-muted small">Macroactor (uno) + Microactores (varios)</div>
+            </div>
+
+            <div class="row g-2 mt-1 align-items-end">
+              <!-- Macroactor (single) -->
+              <div class="col-12 col-lg-6">
+                <label class="form-label">macroactor</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-diagram-3"></i></span>
+                  <select id="selectMacroactor" class="form-select" aria-label="Macroactor">
+                    <option value="">Cargando…</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Microactores (multi) -->
+              <div class="col-12 col-lg-6">
+                <label class="form-label">microactores</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-lines-fill"></i></span>
+                  <select id="microactorNew" class="form-select" aria-label="Agregar microactor">
+                    <option value="">Cargando…</option>
+                  </select>
+                  <button id="btnAddMicroactor" class="btn btn-outline-primary" type="button" title="Agregar microactor"
+                    aria-label="Agregar microactor">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <div id="microactoresBadges" class="d-flex flex-wrap gap-2 mt-2"></div>
+              </div>
+            </div>
+          </div>
+
+
+
+          <!-- PERSONAS -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-people"></i>
+                <div class="fw-semibold">Personas del caso</div>
+              </div>
+              <button id="btnAddPersona" class="btn btn-outline-primary btn-sm" type="button">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+            <div id="personasList" class="d-flex flex-column gap-2 mt-2"></div>
+          </div>
+          <!-- DESPLAZAMIENTO -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left-right"></i>
+                <div class="fw-semibold">Desplazamiento</div>
+              </div>
+              <button id="btnGestionarDesplazamiento" class="btn btn-outline-primary btn-sm" type="button"
+                title="Gestionar desplazamiento" aria-label="Gestionar desplazamiento">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+            </div>
+            <div class="form-text">Crea, edita o elimina el desplazamiento del caso (máximo 1).</div>
+            <div id="desplazamientoStatus" class="small mt-1 text-muted">Estado: —</div>
+          </div>
+
+
+          <!-- FUENTE -->
+          <div class="col-12">
+            <hr class="border-2">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-link-45deg"></i>
+                <div class="fw-semibold">Fuente</div>
+              </div>
+              <button id="btnOpenFuente" class="btn btn-outline-secondary btn-sm" type="button" title="Abrir enlace"
+                aria-label="Abrir enlace">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </button>
+            </div>
+
+            <div class="row g-2 mt-1 align-items-end">
+              <div class="col-12 col-lg-5">
+                <label class="form-label">Fuente</label>
+                <input id="fuente" type="text" class="form-control" placeholder="Ej. medio, entidad, informe">
+              </div>
+              <div class="col-12 col-lg-3">
+                <label class="form-label">Fecha fuente</label>
+                <input id="fechaFuente" type="date" class="form-control">
+              </div>
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Enlace</label>
+                <input id="enlaceFuente" type="url" class="form-control" placeholder="https://...">
+              </div>
+            </div>
+          </div>
+
+          <!-- CONTEXTUAL INFO -->
+          <div class="col-12">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-journal-text"></i>
+              <div class="fw-semibold">Información contextual</div>
+            </div>
+            <textarea id="contextualInfo" class="form-control mt-1" rows="4"
+              placeholder="Contexto, observaciones, notas clave…"></textarea>
+          </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="navbar fixed-bottom bottombar">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center justify-content-between bottombar-scroll">
+        <div class="d-flex align-items-center">
+          <button id="btnFirst" class="btn btn-outline-secondary btn-sm" type="button" title="Primero"
+            aria-label="Primero"><i class="bi bi-skip-backward-fill"></i></button>
+          <button id="btnPrev" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Anterior"
+            aria-label="Anterior"><i class="bi bi-caret-left-fill"></i></button>
+          <button id="btnNext" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Siguiente"
+            aria-label="Siguiente"><i class="bi bi-caret-right-fill"></i></button>
+          <button id="btnLast" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Último"
+            aria-label="Último"><i class="bi bi-skip-forward-fill"></i></button>
+          <div class="vsep"></div>
+          <button id="btnAdd" class="btn btn-outline-primary btn-sm" type="button" title="Agregar"
+            aria-label="Agregar"><i class="bi bi-plus-circle"></i></button>
+          <button id="btnDelete" class="btn btn-outline-danger btn-sm ms-2" type="button" title="Borrar"
+            aria-label="Borrar"><i class="bi bi-trash"></i></button>
+          <button id="btnSave" class="btn btn-primary btn-sm ms-2" type="button" title="Guardar" aria-label="Guardar"><i
+              class="bi bi-save"></i></button>
+        </div>
+
+        <div class="d-flex align-items-center ms-3">
+          <button id="btnPaste" class="btn btn-outline-secondary btn-sm" type="button" title="Pegar"
+            aria-label="Pegar"><i class="bi bi-clipboard-plus"></i></button>
+          <button id="btnBackup" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Backup"
+            aria-label="Backup"><i class="bi bi-cloud-arrow-up"></i></button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="modal fade" id="modalSubtipos" tabindex="-1" aria-labelledby="modalSubtiposLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="modalSubtiposLabel"><i
+              class="bi bi-list-check"></i> Subtipos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <span class="input-group-text"><i class="bi bi-list"></i></span>
+            <select id="subtipoNew" class="form-select" aria-label="Seleccionar subtipo"></select>
+            <button id="btnAddSubtipo" class="btn btn-outline-primary" type="button" title="Agregar"
+              aria-label="Agregar"><i class="bi bi-check2"></i></button>
+          </div>
+
+          <div id="subtiposList" class="list-group"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i
+              class="bi bi-x-circle me-1"></i>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL DESPLAZAMIENTO -->
+  <div class="modal fade" id="modalDesplazamiento" tabindex="-1" aria-labelledby="modalDesplazamientoLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="modalDesplazamientoLabel">
+            <i class="bi bi-arrow-left-right"></i> Desplazamiento
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label">Tipo</label>
+              <select id="des_tipo" class="form-select">
+                <option value="">— Selecciona —</option>
+                <option value="Individual">Individual</option>
+                <option value="Colectivo">Colectivo</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Fecha desplazamiento</label>
+              <input type="date" id="des_fecha_des" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Lugar destino</label>
+              <input type="text" id="des_lugar_des" class="form-control" placeholder="Ej. Sector La Granja">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Entorno destino</label>
+              <select id="des_entorno_des" class="form-select">
+                <option value="">— Selecciona —</option>
+                <option value="Rural">Rural</option>
+                <option value="Urbano">Urbano</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Fecha origen</label>
+              <input type="date" id="des_fecha_ori" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Lugar origen</label>
+              <input type="text" id="des_lugar_ori" class="form-control" placeholder="Ej. Resguardo / vereda">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Entorno origen</label>
+              <select id="des_entorno_ori" class="form-select">
+                <option value="">— Selecciona —</option>
+                <option value="Rural">Rural</option>
+                <option value="Urbano">Urbano</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div class="form-text mt-2">
+            Se guarda en <code>desplazamientos_2026</code>. Máximo 1 registro por caso.
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btnDeleteDesplazamiento" class="btn btn-outline-danger" type="button">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
+          <button id="btnSaveDesplazamiento" class="btn btn-primary" type="button">
+            <i class="bi bi-save"></i> Guardar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/main.js"></script>
+
+  <!-- MODAL PERSONA -->
+  <div class="modal fade" id="modalPersona" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person"></i> Persona</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" id="persona_id">
+
+          <div class="mb-3">
+            <label class="form-label">Nombres</label>
+            <input type="text" id="per_nombres" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Documento</label>
+            <input type="text" id="per_documento" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Edad</label>
+            <input type="number" id="per_edad" class="form-control" min="0" max="120">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Género</label>
+            <select id="per_genero" class="form-select">
+              <option value="">— Selecciona —</option>
+              <option>Hombre</option>
+              <option>Mujer</option>
+              <option>No binario</option>
+              <option>LGBTIQ+</option>
+              <option>Otro</option>
+              <option>No reporta</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Cargo</label>
+            <input type="text" id="per_cargo" class="form-control">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btnDeletePersona" class="btn btn-outline-danger">Eliminar</button>
+          <button id="btnSavePersona" class="btn btn-primary">Guardar</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL AUDITORÍA / FILTROS -->
+  <div class="modal fade" id="modalAudit" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2">
+            <i class="bi bi-funnel"></i> Auditoría / Filtros (año cargado)
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">ID exacto</label>
+              <input id="f_id" type="number" class="form-control" placeholder="Ej. 123">
+            </div>
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">nmujeres ≥</label>
+              <input id="f_nmuj_min" type="number" min="0" class="form-control" placeholder="0">
+            </div>
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">nhombres ≥</label>
+              <input id="f_nhom_min" type="number" min="0" class="form-control" placeholder="0">
+            </div>
+
+            <div class="col-6 col-md-3">
+              <label class="form-label">npersonas ≥</label>
+              <input id="f_nper_min" type="number" min="0" class="form-control" placeholder="0">
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Departamento</label>
+              <select id="f_depto" class="form-select">
+                <option value="">Todos</option>
+              </select>
+              <div class="form-text">Usa el departamento del territorio (municipios agregados).</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Municipio</label>
+              <select id="f_muni" class="form-select">
+                <option value="">Todos</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Verificación rápida</label>
+              <select id="f_issue" class="form-select">
+                <option value="">— Ninguna —</option>
+                <option value="sinMunicipio">Sin municipio</option>
+                <option value="sinDepartamento">Sin departamento</option>
+                <option value="sinMujeres">Sin mujeres (0)</option>
+                <option value="sinHombres">Sin hombres (0)</option>
+                <option value="sinPersonas">Sin personas (0)</option>
+                <option value="sinFuente">Sin fuente</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Texto</label>
+              <input id="f_text" type="text" class="form-control" placeholder="detalle / lugar / fuente / contexto">
+            </div>
+
+            <div class="col-12">
+              <div id="auditInfo" class="small text-muted">Mostrando —</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btnResetAudit" type="button" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-counterclockwise"></i> Restablecer
+          </button>
+          <button id="btnApplyAudit" type="button" class="btn btn-primary">
+            <i class="bi bi-check2"></i> Aplicar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
