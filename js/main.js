@@ -11,7 +11,7 @@
 // ✅ Quitar municipio: borra por (caso_id, municipio)
 
 const SUPABASE_URL = 'https://sjvuxlcgeswapbphsqkv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE';
+const SUPABASE_ANON_KEY = 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg';
 
 const INDEX_PAGE = 'index.html';
 const MONITOR_PAGE = 'monitor.html';

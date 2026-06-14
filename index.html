@@ -3,16 +3,337 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ingreso</title>
+  <title>Observatorio · Ingreso</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <style>
+    :root {
+      --color-fondo-1: #edf4ff;
+      --color-fondo-2: #f8fafc;
+      --color-texto: #172033;
+      --color-suave: #6b7280;
+      --borde-tarjeta: rgba(15, 23, 42, .10);
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--color-texto);
+      background:
+        radial-gradient(circle at top left, rgba(13, 110, 253, .18), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(25, 135, 84, .14), transparent 30rem),
+        linear-gradient(135deg, var(--color-fondo-1), var(--color-fondo-2));
+    }
+
+    .contenedor-principal {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 2rem 0;
+    }
+
+    .etiqueta-superior {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .45rem .85rem;
+      border: 1px solid rgba(13, 110, 253, .18);
+      border-radius: 999px;
+      color: #0b5ed7;
+      background: rgba(255, 255, 255, .78);
+      backdrop-filter: blur(12px);
+      font-size: .92rem;
+      font-weight: 600;
+    }
+
+    .titulo-principal {
+      letter-spacing: -.04em;
+      line-height: .95;
+    }
+
+    .texto-principal {
+      max-width: 780px;
+      color: var(--color-suave);
+      font-size: 1.05rem;
+    }
+
+    .tarjeta-modulo {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid var(--borde-tarjeta);
+      border-radius: 1.5rem;
+      background: rgba(255, 255, 255, .88);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, .07);
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+      backdrop-filter: blur(14px);
+    }
+
+    .tarjeta-modulo::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, var(--brillo, rgba(13, 110, 253, .12)), transparent 15rem);
+      pointer-events: none;
+    }
+
+    .tarjeta-modulo:hover {
+      transform: translateY(-6px);
+      border-color: rgba(13, 110, 253, .24);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, .11);
+    }
+
+    .tarjeta-modulo.inactiva {
+      opacity: .82;
+    }
+
+    .icono-modulo {
+      width: 60px;
+      height: 60px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1.1rem;
+      color: var(--color-icono, #0d6efd);
+      background: var(--fondo-icono, rgba(13, 110, 253, .12));
+      font-size: 1.85rem;
+    }
+
+    .descripcion-modulo {
+      color: var(--color-suave);
+      min-height: 76px;
+    }
+
+    .accion-modulo {
+      position: relative;
+      z-index: 2;
+    }
+
+    .icono-login {
+      width: 48px;
+      height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1rem;
+      color: #0d6efd;
+      background: rgba(13, 110, 253, .10);
+      font-size: 1.45rem;
+    }
+
+    @media (max-width: 767.98px) {
+      .contenedor-principal {
+        align-items: flex-start;
+      }
+
+      .titulo-principal {
+        font-size: 2.35rem;
+      }
+    }
+  </style>
 </head>
-<body class="bg-light">
-  <div id="app"></div>
+
+<body>
+  <main class="contenedor-principal">
+    <div class="container">
+      <section class="text-center mb-4 mb-lg-5">
+        <div class="etiqueta-superior mb-3">
+          <i class="bi bi-grid-1x2"></i>
+          Plataforma Observatorio
+        </div>
+        <h1 class="titulo-principal display-4 fw-bold mb-3">Selecciona el módulo de trabajo</h1>
+        <p class="texto-principal mx-auto mb-0">
+          Accede a los módulos del Observatorio desde una pantalla inicial limpia, gráfica y fácil de usar.
+        </p>
+      </section>
+
+      <section class="row g-4 justify-content-center">
+        <!-- TARJETA MONITOR -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <article class="tarjeta-modulo" style="--brillo: rgba(13, 110, 253, .16); --color-icono: #0d6efd; --fondo-icono: rgba(13, 110, 253, .12);">
+            <div class="card-body p-4 p-lg-5 position-relative">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="icono-modulo"><i class="bi bi-speedometer2"></i></div>
+                <span class="badge text-bg-primary-subtle text-primary border border-primary-subtle rounded-pill">Activo</span>
+              </div>
+
+              <h2 class="h3 fw-bold mb-2">Monitor</h2>
+              <p class="descripcion-modulo mb-4">
+                Registro, edición, filtros y seguimiento de casos con información territorial, actores, población y fuentes.
+              </p>
+
+              <button
+                type="button"
+                class="btn btn-primary btn-lg w-100 accion-modulo"
+                data-bs-toggle="modal"
+                data-bs-target="#modalIngresoMonitor">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar al Monitor
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <!-- TARJETA SIG -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <article class="tarjeta-modulo" style="--brillo: rgba(25, 135, 84, .16); --color-icono: #198754; --fondo-icono: rgba(25, 135, 84, .12);">
+            <div class="card-body p-4 p-lg-5 position-relative">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="icono-modulo"><i class="bi bi-map"></i></div>
+                <span class="badge text-bg-success-subtle text-success border border-success-subtle rounded-pill">Activo</span>
+              </div>
+
+              <h2 class="h3 fw-bold mb-2">SIG</h2>
+              <p class="descripcion-modulo mb-4">
+                Visualización geográfica, capas territoriales, puntos por caso y lectura espacial de la información.
+              </p>
+
+              <a href="SIG/sigindex.html" class="btn btn-success btn-lg w-100 accion-modulo">
+                <i class="bi bi-map me-2"></i>Ingresar al SIG
+              </a>
+            </div>
+          </article>
+        </div>
+
+        <!-- TARJETA PÚBLICO -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <article class="tarjeta-modulo inactiva" style="--brillo: rgba(111, 66, 193, .16); --color-icono: #6f42c1; --fondo-icono: rgba(111, 66, 193, .12);">
+            <div class="card-body p-4 p-lg-5 position-relative">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="icono-modulo"><i class="bi bi-globe2"></i></div>
+                <span class="badge text-bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">Próximamente</span>
+              </div>
+
+              <h2 class="h3 fw-bold mb-2">Público</h2>
+              <p class="descripcion-modulo mb-4">
+                Espacio de consulta pública con indicadores generales, contenidos consolidados y salidas comunicativas.
+              </p>
+
+              <button type="button" class="btn btn-outline-secondary btn-lg w-100 accion-modulo" disabled>
+                <i class="bi bi-lock me-2"></i>Módulo en preparación
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- MODAL INGRESO MONITOR -->
+  <div class="modal fade" id="modalIngresoMonitor" tabindex="-1" aria-labelledby="modalIngresoMonitorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header border-0 pb-0">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icono-login"><i class="bi bi-shield-lock"></i></div>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="modalIngresoMonitorLabel">Ingreso al Monitor</h5>
+              <div class="text-muted small">Ingrese usuario/correo y contraseña.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <form id="formIngresoMonitor" autocomplete="on">
+          <div class="modal-body pt-4">
+            <div id="loginAlert" class="mb-3"></div>
+
+            <div class="mb-3">
+              <label for="usuarioMonitor" class="form-label">Usuario / correo</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                <input id="usuarioMonitor" name="usuario" type="email" class="form-control" placeholder="usuario@correo.com" autocomplete="username" required>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label for="claveMonitor" class="form-label">Contraseña</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input id="claveMonitor" name="clave" type="password" class="form-control" placeholder="Contraseña" autocomplete="current-password" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button id="btnIngresoMonitor" type="submit" class="btn btn-primary">
+              <i class="bi bi-check2-circle me-1"></i>Ingresar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./js/main.js"></script>
+
+  <script>
+    // Misma configuración usada en js/main.js para que monitor.html reconozca la sesión.
+    const SUPABASE_URL = 'https://sjvuxlcgeswapbphsqkv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg';
+    const MONITOR_PAGE = 'monitor.html';
+
+    function mostrarLoginAlert(tipo, mensaje) {
+      const host = document.getElementById('loginAlert');
+      if (!host) return;
+      host.innerHTML = `<div class="alert alert-${tipo} py-2 mb-0" role="alert">${mensaje}</div>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('formIngresoMonitor');
+      const btn = document.getElementById('btnIngresoMonitor');
+      const usuario = document.getElementById('usuarioMonitor');
+      const clave = document.getElementById('claveMonitor');
+
+      if (!form || !btn || !usuario || !clave) return;
+
+      if (!window.supabase?.createClient) {
+        mostrarLoginAlert('danger', 'No cargó Supabase. Revisa la conexión o el CDN.');
+        return;
+      }
+
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const email = usuario.value.trim();
+        const password = clave.value;
+
+        if (!email || !password) {
+          mostrarLoginAlert('warning', 'Escribe usuario/correo y contraseña.');
+          return;
+        }
+
+        btn.disabled = true;
+        const htmlOriginal = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Validando...';
+        mostrarLoginAlert('info', 'Validando acceso...');
+
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) throw error;
+
+          if (data?.session) {
+            mostrarLoginAlert('success', 'Ingreso correcto. Abriendo Monitor...');
+            window.location.assign(MONITOR_PAGE);
+            return;
+          }
+
+          mostrarLoginAlert('warning', 'No se obtuvo una sesión válida.');
+        } catch (error) {
+          mostrarLoginAlert('danger', error?.message || 'No fue posible iniciar sesión.');
+          btn.disabled = false;
+          btn.innerHTML = htmlOriginal;
+        }
+      });
+    });
+  </script>
 </body>
 </html>
