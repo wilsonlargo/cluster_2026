@@ -1,22 +1,23 @@
 /*
   datasig.js
-  Administración de datos, filtros y puntos del módulo SIG.
+  Administración de datos y filtros del módulo SIG.
 
-  Este archivo concentra la conexión a Supabase, el panel de filtros, la consulta
-  pública controlada y la representación de casos en el mapa. sigindex.html queda
-  encargado de la estructura visual general y del panel de capas GeoJSON.
+  Este archivo concentra la conexión a Supabase, la consulta pública controlada,
+  los filtros combinados y la representación de casos en el mapa. sigindex.html
+  conserva la estructura visual del mapa y las capas GeoJSON.
 */
 (function () {
   'use strict';
 
-  // Lista base de departamentos de Colombia para que el filtro exista aunque la RPC de opciones falle.
-  const DEPARTAMENTOS_COLOMBIA = [
-    'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bogotá D.C.', 'Bolívar', 'Boyacá', 'Caldas',
-    'Caquetá', 'Casanare', 'Cauca', 'Cesar', 'Chocó', 'Córdoba', 'Cundinamarca', 'Guainía',
-    'Guaviare', 'Huila', 'La Guajira', 'Magdalena', 'Meta', 'Nariño', 'Norte de Santander',
-    'Putumayo', 'Quindío', 'Risaralda', 'San Andrés y Providencia', 'Santander', 'Sucre',
-    'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada'
-  ];
+  // Estado interno de filtros. Cada valor vacío se envía a Supabase como null.
+  const filtrosActivos = {
+    anio: null,
+    departamento: null,
+    pueblo: null,
+    macrotipo: null,
+    macroregion: null,
+    macroactor: null
+  };
 
   // Atajo local para obtener elementos del DOM por id.
   function qs(id) {
@@ -34,13 +35,19 @@
     }[caracter]));
   }
 
-  // Normaliza texto para comparar filtros sin depender de mayúsculas ni tildes en el frontend.
-  function normLocal(valor) {
-    return String(valor || '')
+  // Normaliza texto para comparar valores sin acentos ni diferencias de mayúsculas.
+  function normTxt(valor) {
+    return String(valor ?? '')
       .trim()
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Convierte una opción vacía en null para que la RPC no aplique ese filtro.
+  function limpiarValor(valor) {
+    const v = String(valor ?? '').trim();
+    return v ? v : null;
   }
 
   // Actualiza el texto de estado ubicado en la barra superior del SIG.
@@ -60,16 +67,6 @@
   function limpiarAvisoFiltros() {
     const contenedor = qs('alertasFiltros');
     if (contenedor) contenedor.innerHTML = '';
-  }
-
-  // Actualiza los contadores visibles del panel: registros totales del filtro, casos ubicables y puntos.
-  function actualizarEstadisticasFiltros({ total = 0, casos = 0, puntos = 0 } = {}) {
-    const statTotal = qs('statTotalFiltro');
-    const statCasos = qs('statCasos');
-    const statPuntos = qs('statPuntos');
-    if (statTotal) statTotal.textContent = String(total);
-    if (statCasos) statCasos.textContent = String(casos);
-    if (statPuntos) statPuntos.textContent = String(puntos);
   }
 
   // Crea el cliente Supabase con la configuración pública declarada en configlayers.js.
@@ -119,40 +116,86 @@
     return limpio.length > max ? `${base}…` : base;
   }
 
-  // Convierte valores de coordenadas en números seguros. Acepta coma decimal.
-  function numeroCoordenada(valor) {
-    if (valor === null || valor === undefined || valor === '') return null;
-    const numero = Number(String(valor).trim().replace(',', '.'));
-    return Number.isFinite(numero) ? numero : null;
-  }
+  // Normaliza coordenadas esperadas para Colombia antes de pintar en Leaflet.
+  function normalizarCoordenadasColombia(latEntrada, lngEntrada) {
+    let lat = Number(latEntrada);
+    let lng = Number(lngEntrada);
 
-  // Verifica si una coordenada está dentro de un rango amplio de Colombia.
-  function coordenadaEnColombia(lat, lng) {
-    return lat >= -5 && lat <= 15 && lng >= -82 && lng <= -60;
-  }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-  // Normaliza coordenadas para Colombia antes de pintar en Leaflet.
-  // Corrige longitud positiva y pares lat/lng invertidos.
-  function normalizarCoordenadasColombia(latOriginal, lngOriginal) {
-    const lat = numeroCoordenada(latOriginal);
-    const lng = numeroCoordenada(lngOriginal);
-
-    if (lat === null || lng === null) return null;
-
-    const candidatos = [
-      { lat, lng },
-      { lat, lng: -Math.abs(lng) },
-      { lat: lng, lng: lat },
-      { lat: lng, lng: -Math.abs(lat) },
-      { lat: Math.abs(lng), lng: -Math.abs(lat) }
-    ];
-
-    for (const candidato of candidatos) {
-      if (coordenadaEnColombia(candidato.lat, candidato.lng)) return candidato;
+    // Caso común: lat y lng vienen invertidas, por ejemplo lat=-74 y lng=4.
+    const pareceLatitudComoLongitud = Math.abs(lat) > 20 && Math.abs(lng) <= 15;
+    if (pareceLatitudComoLongitud) {
+      const temp = lat;
+      lat = lng;
+      lng = temp;
     }
 
-    console.warn('Coordenada descartada fuera de Colombia:', { latOriginal, lngOriginal, lat, lng });
-    return null;
+    // Colombia está al occidente de Greenwich; por tanto la longitud debe ser negativa.
+    if (lng > 0 && lng >= 60 && lng <= 85) lng = -lng;
+
+    // Rango aproximado ampliado de Colombia para descartar puntos imposibles.
+    const dentroColombia = lat >= -5.5 && lat <= 14.5 && lng >= -82 && lng <= -65;
+    if (!dentroColombia) return null;
+
+    return { lat, lng };
+  }
+
+  // Lee la configuración visual de puntos desde los controles del panel.
+  function leerEstiloPuntosDesdePanel() {
+    const cfg = window.SIG_CONFIG?.casos?.estiloPunto || {};
+
+    return {
+      radio: Number(qs('sigMarkerRadio')?.value || cfg.radio || 5),
+      colorRelleno: qs('sigMarkerColor')?.value || cfg.colorRelleno || '#0d6efd',
+      colorLinea: qs('sigMarkerLinea')?.value || cfg.colorLinea || '#052c65',
+      grosorLinea: Number(qs('sigMarkerGrosor')?.value || cfg.grosorLinea || 1),
+      opacidadRelleno: Number(qs('sigMarkerOpacidad')?.value || cfg.opacidadRelleno || 0.65),
+      opacidadLinea: Number(qs('sigMarkerOpacidadLinea')?.value || cfg.opacidadLinea || 0.9)
+    };
+  }
+
+  // Aplica al objeto global de configuración el estilo definido en el panel.
+  function sincronizarEstiloPuntos() {
+    if (!window.SIG_CONFIG) return;
+    if (!window.SIG_CONFIG.casos) window.SIG_CONFIG.casos = {};
+    window.SIG_CONFIG.casos.estiloPunto = leerEstiloPuntosDesdePanel();
+    actualizarVistaPreviaPunto();
+  }
+
+  // Actualiza la muestra circular del panel para que el usuario vea el estilo seleccionado.
+  function actualizarVistaPreviaPunto() {
+    const preview = qs('sigMarkerPreview');
+    if (!preview) return;
+    const estilo = window.SIG_CONFIG?.casos?.estiloPunto || leerEstiloPuntosDesdePanel();
+    const radio = Number(estilo.radio || 5);
+    preview.style.width = `${Math.max(10, radio * 2.4)}px`;
+    preview.style.height = `${Math.max(10, radio * 2.4)}px`;
+    preview.style.background = estilo.colorRelleno || '#0d6efd';
+    preview.style.borderColor = estilo.colorLinea || '#052c65';
+    preview.style.borderWidth = `${Math.max(1, Number(estilo.grosorLinea || 1))}px`;
+    preview.style.opacity = String(estilo.opacidadRelleno ?? 0.65);
+  }
+
+  // Aplica el estilo vigente a los puntos ya pintados sin volver a consultar Supabase.
+  function actualizarEstiloPuntosEnMapa() {
+    sincronizarEstiloPuntos();
+    const state = window.SIG_STATE;
+    const estilo = window.SIG_CONFIG?.casos?.estiloPunto || {};
+    if (!state?.capaCasos) return;
+
+    state.capaCasos.eachLayer(layer => {
+      if (layer instanceof L.CircleMarker) {
+        layer.setStyle({
+          radius: Number(estilo.radio ?? 5),
+          color: estilo.colorLinea || '#052c65',
+          weight: Number(estilo.grosorLinea ?? 1),
+          opacity: Number(estilo.opacidadLinea ?? 0.9),
+          fillColor: estilo.colorRelleno || '#0d6efd',
+          fillOpacity: Number(estilo.opacidadRelleno ?? 0.65)
+        });
+      }
+    });
   }
 
   // Construye el popup resumido de cada punto de caso.
@@ -161,60 +204,95 @@
     const municipio = lugar?.municipio || 'Municipio no reportado';
     const departamento = lugar?.departamento || textoLista(registro.departamentos, 1) || registro.departamento || '—';
     const macroregion = lugar?.macroregion || textoLista(registro.macroregiones, 1) || registro.macroregion || '—';
-    const macrotipo = registro.macrotipo || 'Sin macrotipo';
 
     return `
       <div style="min-width:270px">
         <div class="fw-bold mb-1">Caso SIG</div>
-        <div class="small text-muted mb-2">${escapeHtml(fecha)} · ${escapeHtml(macrotipo)}</div>
+        <div class="small text-muted mb-2">${escapeHtml(fecha)}</div>
         <table class="table table-sm mb-2">
           <tbody>
-            <tr><th class="text-muted pe-2">Macrotipo</th><td>${escapeHtml(macrotipo)}</td></tr>
+            <tr><th class="text-muted pe-2">Macrotipo</th><td>${escapeHtml(registro.macrotipo || '—')}</td></tr>
             <tr><th class="text-muted pe-2">Municipio</th><td>${escapeHtml(municipio)}</td></tr>
             <tr><th class="text-muted pe-2">Departamento</th><td>${escapeHtml(departamento)}</td></tr>
             <tr><th class="text-muted pe-2">Macroregión</th><td>${escapeHtml(macroregion)}</td></tr>
             <tr><th class="text-muted pe-2">Pueblos</th><td>${escapeHtml(textoLista(registro.pueblo))}</td></tr>
+            <tr><th class="text-muted pe-2">Macroactor</th><td>${escapeHtml(registro.macroactor || '—')}</td></tr>
             <tr><th class="text-muted pe-2">Personas</th><td>${escapeHtml(registro.npersonas ?? 0)}</td></tr>
-            <tr><th class="text-muted pe-2">Actor</th><td>${escapeHtml(registro.macroactor || '—')}</td></tr>
           </tbody>
         </table>
         <div class="text-muted small">ID: ${escapeHtml(String(registro.caso_id || '').slice(0, 8))}…</div>
       </div>`;
   }
 
-  // Lee los estilos vigentes para circleMarker desde SIG_CONFIG.
-  function obtenerEstiloPunto() {
-    const estilo = window.SIG_CONFIG?.casos?.estiloPunto || {};
+  // Lee los filtros actuales del panel lateral.
+  function leerFiltrosDesdePanel() {
     return {
-      radio: Number(estilo.radio ?? 5),
-      colorRelleno: estilo.colorRelleno || '#0d6efd',
-      colorLinea: estilo.colorLinea || '#084298',
-      opacidadRelleno: Number(estilo.opacidadRelleno ?? 0.65),
-      opacidadLinea: Number(estilo.opacidadLinea ?? 0.9),
-      grosorLinea: Number(estilo.grosorLinea ?? 1)
+      anio: limpiarValor(qs('filtroAnioSIG')?.value),
+      departamento: limpiarValor(qs('filtroDepartamentoSIG')?.value),
+      pueblo: limpiarValor(qs('filtroPuebloSIG')?.value),
+      macrotipo: limpiarValor(qs('filtroMacrotipoSIG')?.value),
+      macroregion: limpiarValor(qs('filtroMacroregionSIG')?.value),
+      macroactor: limpiarValor(qs('filtroMacroactorSIG')?.value)
     };
   }
 
-  // Limpia del mapa la capa de puntos proveniente de Supabase.
+  // Copia los filtros leídos al estado interno, para tener trazabilidad de la consulta actual.
+  function guardarFiltrosActivos(filtros) {
+    Object.assign(filtrosActivos, filtros);
+  }
+
+  // Genera el texto visible que informa qué filtros están aplicados.
+  function actualizarTextoFiltrosActivos(filtros = filtrosActivos) {
+    const host = qs('textoFiltrosActivos');
+    if (!host) return;
+
+    const activos = [];
+    if (filtros.anio) activos.push(`Año ${filtros.anio}`);
+    if (filtros.departamento) activos.push(`Departamento ${filtros.departamento}`);
+    if (filtros.pueblo) activos.push(`Pueblo ${filtros.pueblo}`);
+    if (filtros.macrotipo) activos.push(`Macrotipo ${filtros.macrotipo}`);
+    if (filtros.macroregion) activos.push(`Macroregión ${filtros.macroregion}`);
+    if (filtros.macroactor) activos.push(`Macroactor ${filtros.macroactor}`);
+
+    host.className = activos.length ? 'alert alert-primary-subtle border small mb-3' : 'alert alert-light border small mb-3';
+    host.innerHTML = activos.length
+      ? `<div class="fw-semibold mb-1"><i class="bi bi-check2-circle me-1"></i>Filtros aplicados</div><div>${activos.map(escapeHtml).join(' · ')}</div>`
+      : '<div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i>Sin filtros aplicados</div><div class="text-muted">Mostrando todos los registros disponibles para el SIG.</div>';
+  }
+
+  // Actualiza los contadores visibles del panel de filtros.
+  function actualizarEstadisticasFiltros({ registros = 0, casosConCoordenadas = 0, puntos = 0 } = {}) {
+    const statRegistros = qs('statRegistros');
+    const statCasosCoord = qs('statCasosCoord');
+    const statPuntos = qs('statPuntos');
+
+    if (statRegistros) statRegistros.textContent = String(registros);
+    if (statCasosCoord) statCasosCoord.textContent = String(casosConCoordenadas);
+    if (statPuntos) statPuntos.textContent = String(puntos);
+  }
+
+  // Limpia la capa de puntos del mapa, pero no borra la configuración de filtros del panel.
   function limpiarRegistrosMapa() {
     const state = window.SIG_STATE;
     if (!state) return;
 
     if (state.capaCasos) state.capaCasos.clearLayers();
     state.casosConsultados = [];
-    actualizarEstadisticasFiltros({ total: 0, casos: 0, puntos: 0 });
+    actualizarEstadisticasFiltros({ registros: 0, casosConCoordenadas: 0, puntos: 0 });
     actualizarEstado('Registros limpiados del mapa');
   }
 
   // Pinta registros de la RPC como circleMarker usando lugares[].lat y lugares[].lng.
-  // El total cuenta todos los casos devueltos por el filtro, incluso si no tienen coordenadas.
   function pintarRegistrosEnMapa(registros) {
     const state = window.SIG_STATE;
     const cfg = window.SIG_CONFIG;
 
-    if (!state?.mapa || !state?.capaCasos) return { total: 0, casos: 0, puntos: 0 };
+    if (!state?.mapa || !state?.capaCasos) return { registros: 0, casosConCoordenadas: 0, puntos: 0 };
 
+    sincronizarEstiloPuntos();
     state.capaCasos.clearLayers();
+
+    const estilo = cfg?.casos?.estiloPunto || {};
     const bounds = [];
     const casosConCoordenadas = new Set();
     let puntos = 0;
@@ -226,23 +304,21 @@
         const coord = normalizarCoordenadasColombia(lugar?.lat, lugar?.lng);
         if (!coord) return;
 
-        const { lat, lng } = coord;
-        const estilo = obtenerEstiloPunto();
-        const marker = L.circleMarker([lat, lng], {
+        const marker = L.circleMarker([coord.lat, coord.lng], {
           pane: cfg?.casos?.pane || 'pane9',
-          radius: estilo.radio,
-          color: estilo.colorLinea,
-          weight: estilo.grosorLinea,
-          opacity: estilo.opacidadLinea,
-          fillColor: estilo.colorRelleno,
-          fillOpacity: estilo.opacidadRelleno
+          radius: Number(estilo.radio ?? 5),
+          color: estilo.colorLinea || '#052c65',
+          weight: Number(estilo.grosorLinea ?? 1),
+          opacity: Number(estilo.opacidadLinea ?? 0.9),
+          fillColor: estilo.colorRelleno || '#0d6efd',
+          fillOpacity: Number(estilo.opacidadRelleno ?? 0.65)
         });
 
         marker.bindPopup(crearPopupCaso(registro, lugar));
         marker.addTo(state.capaCasos);
-        bounds.push([lat, lng]);
-        puntos += 1;
+        bounds.push([coord.lat, coord.lng]);
         casosConCoordenadas.add(String(registro.caso_id));
+        puntos += 1;
       });
     });
 
@@ -253,322 +329,215 @@
       });
     }
 
-    return { total: registros.length, casos: casosConCoordenadas.size, puntos };
+    return {
+      registros: registros.length,
+      casosConCoordenadas: casosConCoordenadas.size,
+      puntos
+    };
   }
 
-  // Repinta los registros ya consultados cuando se cambia color, radio, línea u opacidad.
-  function repintarRegistrosActuales() {
+  // Consulta una RPC paginada hasta traer todos los registros disponibles.
+  async function consultarRpcPaginada(nombreFuncion, parametros = {}, tamanoPagina = 1000) {
     const state = window.SIG_STATE;
-    const registros = Array.isArray(state?.casosConsultados) ? state.casosConsultados : [];
-    const resumen = pintarRegistrosEnMapa(registros);
-    actualizarEstadisticasFiltros(resumen);
-  }
+    const cliente = state?.supabaseClient;
+    if (!cliente) throw new Error('No hay conexión Supabase configurada.');
 
-  // Consulta una RPC paginando resultados para superar el límite estándar de 1000 filas de Supabase.
-  async function consultarRpcPaginada(cliente, nombreFuncion, parametros = {}, opciones = {}) {
-    const tamanoPagina = Number(opciones.tamanoPagina || 1000);
-    const maxPaginas = Number(opciones.maxPaginas || 100);
     const acumulado = [];
-
     let desde = 0;
-    let pagina = 0;
 
-    while (pagina < maxPaginas) {
+    while (true) {
       const hasta = desde + tamanoPagina - 1;
-
-      actualizarEstado(`Consultando Supabase ${desde + 1}-${hasta + 1}...`);
-      mostrarAvisoFiltros('info', `Consultando registros ${desde + 1} a ${hasta + 1}...`);
-
       const { data, error } = await cliente
         .rpc(nombreFuncion, parametros)
         .range(desde, hasta);
 
       if (error) throw error;
 
-      const lote = Array.isArray(data) ? data : [];
-      acumulado.push(...lote);
+      const pagina = Array.isArray(data) ? data : [];
+      acumulado.push(...pagina);
 
-      if (lote.length < tamanoPagina) break;
-
-      pagina += 1;
+      if (pagina.length < tamanoPagina) break;
       desde += tamanoPagina;
     }
 
     return acumulado;
   }
 
-  // Devuelve el año vigente para construir el filtro de 2016 hasta hoy.
-  function anioActual() {
-    return new Date().getFullYear();
-  }
-
-  // Llena un select de opciones. El valor vacío representa "todos".
-  function llenarSelect(id, opciones, etiquetaTodos) {
-    const select = qs(id);
-    if (!select) return;
-
-    const vistos = new Set();
-    const limpias = (opciones || [])
-      .map(v => String(v || '').trim())
-      .filter(Boolean)
-      .filter(v => {
-        const k = normLocal(v);
-        if (!k || vistos.has(k)) return false;
-        vistos.add(k);
-        return true;
-      })
-      .sort((a, b) => a.localeCompare(b, 'es'));
-
-    select.innerHTML = `<option value="">${escapeHtml(etiquetaTodos)}</option>` +
-      limpias.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-  }
-
-  // Llena el filtro de años desde 2016 hasta el año vigente.
-  function llenarAnios() {
-    const select = qs('filtroAnioSIG');
-    if (!select) return;
-
-    const actual = anioActual();
-    const anios = [];
-    for (let y = actual; y >= 2016; y -= 1) anios.push(y);
-
-    select.innerHTML = '<option value="">Todos los años</option>' +
-      anios.map(y => `<option value="${y}">${y}</option>`).join('');
-  }
-
-  // Construye los parámetros de la RPC desde los controles del panel.
-  function leerFiltrosActivos() {
-    const anioRaw = qs('filtroAnioSIG')?.value || '';
-    return {
-      p_anio: anioRaw ? Number(anioRaw) : null,
-      p_departamento: qs('filtroDepartamentoSIG')?.value || null,
-      p_pueblo: qs('filtroPuebloSIG')?.value || null,
-      p_macrotipo: qs('filtroMacrotipoSIG')?.value || null,
-      p_macroregion: qs('filtroMacroregionSIG')?.value || null,
-      p_macroactor: qs('filtroMacroactorSIG')?.value || null
-    };
-  }
-
-  // Limpia todos los filtros territoriales y temáticos.
-  function limpiarFiltros() {
-    ['filtroAnioSIG', 'filtroDepartamentoSIG', 'filtroPuebloSIG', 'filtroMacrotipoSIG', 'filtroMacroregionSIG', 'filtroMacroactorSIG']
-      .forEach(id => {
-        const el = qs(id);
-        if (el) el.value = '';
-      });
-  }
-
-  // Consulta opciones para los filtros desde una RPC liviana. Si falla, usa valores de respaldo.
-  async function cargarOpcionesFiltros() {
-    llenarAnios();
-    llenarSelect('filtroDepartamentoSIG', DEPARTAMENTOS_COLOMBIA, 'Todos los departamentos');
-
-    const cliente = window.SIG_STATE?.supabaseClient;
-    const nombreFuncion = window.SIG_CONFIG?.supabase?.rpcOpcionesFiltros || 'get_sig_opciones_filtros_2026';
-    if (!cliente) return;
-
-    try {
-      const { data, error } = await cliente.rpc(nombreFuncion);
-      if (error) throw error;
-
-      const row = Array.isArray(data) ? data[0] : data;
-      const opciones = row?.opciones || row || {};
-
-      llenarSelect('filtroDepartamentoSIG', opciones.departamentos?.length ? opciones.departamentos : DEPARTAMENTOS_COLOMBIA, 'Todos los departamentos');
-      llenarSelect('filtroPuebloSIG', opciones.pueblos || [], 'Todos los pueblos');
-      llenarSelect('filtroMacrotipoSIG', opciones.macrotipos || [], 'Todos los macrotipos');
-      llenarSelect('filtroMacroregionSIG', opciones.macroregiones || [], 'Todas las macroregiones');
-      llenarSelect('filtroMacroactorSIG', opciones.macroactores || [], 'Todos los macroactores');
-    } catch (error) {
-      console.warn('No se pudieron cargar opciones dinámicas de filtros:', error);
-      llenarSelect('filtroPuebloSIG', [], 'Todos los pueblos');
-      llenarSelect('filtroMacrotipoSIG', [], 'Todos los macrotipos');
-      llenarSelect('filtroMacroregionSIG', [], 'Todas las macroregiones');
-      llenarSelect('filtroMacroactorSIG', [], 'Todos los macroactores');
-      mostrarAvisoFiltros('warning', 'No se pudieron cargar opciones dinámicas. Revisa la función de filtros en Supabase.');
-    }
-  }
-
-  // Consulta la RPC pública controlada y muestra registros según filtros activos.
-  async function consultarRegistrosSIG({ limpiar = false } = {}) {
+  // Ejecuta la consulta filtrada y actualiza mapa, texto y conteos.
+  async function consultarYPintarCasosSIG(filtros, opciones = {}) {
     const state = window.SIG_STATE;
     const cfg = window.SIG_CONFIG;
-    const cliente = state?.supabaseClient;
-    const btn = limpiar ? qs('btnMostrarTodosRegistros') : qs('btnAplicarFiltrosSIG');
+    const nombreFuncion = cfg?.supabase?.rpcCasosMapaFiltrado || 'get_sig_casos_mapa_filtrado_2026';
+    const boton = opciones.boton || null;
+    const htmlOriginal = boton ? boton.innerHTML : '';
 
-    if (!cliente) {
-      mostrarAvisoFiltros('danger', 'No hay conexión Supabase configurada.');
-      return;
-    }
-
-    if (limpiar) limpiarFiltros();
-
-    const nombreFuncion = cfg?.supabase?.rpcCasosMapa || 'get_sig_casos_mapa_filtrado_2026';
-    const parametros = leerFiltrosActivos();
-    const htmlOriginal = btn ? btn.innerHTML : '';
+    const parametros = {
+      p_anio: filtros.anio ? Number(filtros.anio) : null,
+      p_departamento: filtros.departamento || null,
+      p_pueblo: filtros.pueblo || null,
+      p_macrotipo: filtros.macrotipo || null,
+      p_macroregion: filtros.macroregion || null,
+      p_macroactor: filtros.macroactor || null
+    };
 
     try {
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Consultando...';
+      if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Consultando...';
       }
 
-      mostrarAvisoFiltros('info', 'Consultando registros disponibles para el SIG...');
-      actualizarEstado('Consultando Supabase...');
+      limpiarAvisoFiltros();
+      actualizarEstado('Consultando filtros en Supabase...');
+      mostrarAvisoFiltros('info', 'Consultando registros vinculados al filtro territorial...');
 
-      const registros = await consultarRpcPaginada(cliente, nombreFuncion, parametros, {
-        tamanoPagina: cfg?.supabase?.tamanoPagina || 1000,
-        maxPaginas: cfg?.supabase?.maxPaginas || 100
-      });
-
+      const registros = await consultarRpcPaginada(nombreFuncion, parametros);
       state.casosConsultados = registros;
-      const resumen = pintarRegistrosEnMapa(registros);
 
+      const resumen = pintarRegistrosEnMapa(registros);
       actualizarEstadisticasFiltros(resumen);
       limpiarAvisoFiltros();
-      actualizarEstado(`${resumen.total} registros filtrados · ${resumen.puntos} puntos en mapa`);
 
-      if (!resumen.puntos) {
-        mostrarAvisoFiltros('warning', 'La consulta respondió, pero no encontró coordenadas válidas para pintar. El total del filtro sí incluye registros sin ubicación.');
+      if (resumen.puntos) {
+        actualizarEstado(`${resumen.puntos} puntos en mapa · ${resumen.registros} registros vinculados`);
+      } else {
+        actualizarEstado(`${resumen.registros} registros vinculados, sin coordenadas para pintar`);
+        mostrarAvisoFiltros('warning', 'La consulta encontró registros, pero ninguno tiene coordenadas válidas para el mapa.');
       }
     } catch (error) {
       console.error(error);
       mostrarAvisoFiltros('danger', error?.message || 'No fue posible consultar los registros del SIG.');
       actualizarEstado('Error consultando Supabase');
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = htmlOriginal;
+      if (boton) {
+        boton.disabled = false;
+        boton.innerHTML = htmlOriginal;
       }
     }
   }
 
-  // Crea una paleta de color reutilizable dentro del panel de filtros.
-  function crearSelectorColorFiltros({ contenedorId, muestraId, etiqueta, valorInicial, onChange }) {
-    const contenedor = qs(contenedorId);
-    if (!contenedor) return;
-
-    contenedor.innerHTML = '';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'dropdown';
-
-    const boton = document.createElement('button');
-    boton.type = 'button';
-    boton.className = 'color-picker-btn dropdown-toggle';
-    boton.setAttribute('data-bs-toggle', 'dropdown');
-    boton.setAttribute('aria-expanded', 'false');
-
-    const muestra = document.createElement('span');
-    muestra.className = 'color-sample';
-    muestra.id = muestraId;
-    muestra.style.background = valorInicial;
-
-    const texto = document.createElement('span');
-    texto.textContent = etiqueta;
-
-    boton.append(muestra, texto);
-
-    const menu = document.createElement('div');
-    menu.className = 'dropdown-menu color-palette-menu shadow';
-
-    const grilla = document.createElement('div');
-    grilla.className = 'color-grid';
-
-    (window.SIG_CONFIG?.paletaColores || []).forEach(color => {
-      const opcion = document.createElement('button');
-      opcion.type = 'button';
-      opcion.className = 'color-option';
-      opcion.style.background = color;
-      opcion.title = color;
-      opcion.setAttribute('aria-label', `Seleccionar color ${color}`);
-      if (color.toLowerCase() === String(valorInicial).toLowerCase()) opcion.classList.add('active');
-
-      opcion.addEventListener('click', () => {
-        muestra.style.background = color;
-        grilla.querySelectorAll('.color-option').forEach(btn => btn.classList.remove('active'));
-        opcion.classList.add('active');
-        onChange(color);
-        repintarRegistrosActuales();
-      });
-
-      grilla.appendChild(opcion);
-    });
-
-    menu.appendChild(grilla);
-    wrapper.append(boton, menu);
-    contenedor.appendChild(wrapper);
+  // Acción directa: mostrar todos los registros equivale a consultar con filtros vacíos.
+  async function mostrarTodosLosRegistros() {
+    const filtros = {
+      anio: null,
+      departamento: null,
+      pueblo: null,
+      macrotipo: null,
+      macroregion: null,
+      macroactor: null
+    };
+    guardarFiltrosActivos(filtros);
+    actualizarTextoFiltrosActivos(filtros);
+    await consultarYPintarCasosSIG(filtros, { boton: qs('btnMostrarTodosRegistros') });
   }
 
-  // Crea los controles de estilo del circleMarker: tamaño, color, línea y opacidad.
-  function inicializarControlesPunto() {
+  // Aplica simultáneamente todos los filtros seleccionados en el panel.
+  async function aplicarFiltrosSIG() {
+    const filtros = leerFiltrosDesdePanel();
+    guardarFiltrosActivos(filtros);
+    actualizarTextoFiltrosActivos(filtros);
+    await consultarYPintarCasosSIG(filtros, { boton: qs('btnAplicarFiltrosSIG') });
+  }
+
+  // Limpia los controles del panel y vuelve a mostrar todos los registros.
+  async function limpiarFiltrosSIG() {
+    ['filtroAnioSIG', 'filtroDepartamentoSIG', 'filtroPuebloSIG', 'filtroMacrotipoSIG', 'filtroMacroregionSIG', 'filtroMacroactorSIG']
+      .forEach(id => {
+        const el = qs(id);
+        if (el) el.value = '';
+      });
+
+    const filtros = {
+      anio: null,
+      departamento: null,
+      pueblo: null,
+      macrotipo: null,
+      macroregion: null,
+      macroactor: null
+    };
+
+    guardarFiltrosActivos(filtros);
+    actualizarTextoFiltrosActivos(filtros);
+    await consultarYPintarCasosSIG(filtros, { boton: qs('btnLimpiarFiltrosSIG') });
+  }
+
+  // Carga opciones de filtros desde la función RPC y llena los select.
+  async function cargarOpcionesFiltros() {
+    const state = window.SIG_STATE;
     const cfg = window.SIG_CONFIG;
-    if (!cfg?.casos?.estiloPunto) return;
+    const cliente = state?.supabaseClient;
+    if (!cliente) return;
 
-    const estilo = cfg.casos.estiloPunto;
+    const nombreFuncion = cfg?.supabase?.rpcOpcionesFiltros || 'get_sig_opciones_filtros_2026';
 
-    const radio = qs('markerRadioSIG');
-    const radioValor = qs('markerRadioValorSIG');
-    if (radio) {
-      radio.value = String(estilo.radio ?? 5);
-      if (radioValor) radioValor.textContent = radio.value;
-      radio.addEventListener('input', () => {
-        estilo.radio = Number(radio.value);
-        if (radioValor) radioValor.textContent = radio.value;
-        repintarRegistrosActuales();
-      });
+    try {
+      const { data, error } = await cliente.rpc(nombreFuncion);
+      if (error) throw error;
+
+      const fila = Array.isArray(data) ? data[0] : data;
+      const opciones = fila?.opciones || fila || {};
+
+      llenarSelect('filtroAnioSIG', opciones.anios || [], 'Todos los años');
+      llenarSelect('filtroDepartamentoSIG', opciones.departamentos || [], 'Todos los departamentos');
+      llenarSelect('filtroPuebloSIG', opciones.pueblos || [], 'Todos los pueblos');
+      llenarSelect('filtroMacrotipoSIG', opciones.macrotipos || [], 'Todos los macrotipos');
+      llenarSelect('filtroMacroregionSIG', opciones.macroregiones || [], 'Todas las macroregiones');
+      llenarSelect('filtroMacroactorSIG', opciones.macroactores || [], 'Todos los macroactores');
+    } catch (error) {
+      console.error(error);
+      mostrarAvisoFiltros('warning', 'No se pudieron cargar las opciones de filtros. Revisa la función get_sig_opciones_filtros_2026().');
     }
-
-    const grosor = qs('markerGrosorSIG');
-    if (grosor) {
-      grosor.value = String(estilo.grosorLinea ?? 1);
-      grosor.addEventListener('change', () => {
-        estilo.grosorLinea = Number(grosor.value);
-        repintarRegistrosActuales();
-      });
-    }
-
-    const opRelleno = qs('markerOpacidadRellenoSIG');
-    if (opRelleno) {
-      opRelleno.value = String(estilo.opacidadRelleno ?? 0.65);
-      opRelleno.addEventListener('change', () => {
-        estilo.opacidadRelleno = Number(opRelleno.value);
-        repintarRegistrosActuales();
-      });
-    }
-
-    const opLinea = qs('markerOpacidadLineaSIG');
-    if (opLinea) {
-      opLinea.value = String(estilo.opacidadLinea ?? 0.9);
-      opLinea.addEventListener('change', () => {
-        estilo.opacidadLinea = Number(opLinea.value);
-        repintarRegistrosActuales();
-      });
-    }
-
-    crearSelectorColorFiltros({
-      contenedorId: 'markerColorRellenoSlotSIG',
-      muestraId: 'markerColorRellenoMuestraSIG',
-      etiqueta: 'Color del punto',
-      valorInicial: estilo.colorRelleno || '#0d6efd',
-      onChange: color => { estilo.colorRelleno = color; }
-    });
-
-    crearSelectorColorFiltros({
-      contenedorId: 'markerColorLineaSlotSIG',
-      muestraId: 'markerColorLineaMuestraSIG',
-      etiqueta: 'Color de línea',
-      valorInicial: estilo.colorLinea || '#084298',
-      onChange: color => { estilo.colorLinea = color; }
-    });
   }
 
-  // Enlaza los botones del panel de filtros con sus funciones.
+  // Llena un select conservando una primera opción vacía.
+  function llenarSelect(id, valores, etiquetaTodos) {
+    const select = qs(id);
+    if (!select) return;
+
+    const valorActual = select.value;
+    const lista = Array.from(new Set((valores || [])
+      .map(v => String(v ?? '').trim())
+      .filter(Boolean)))
+      .sort((a, b) => {
+        const na = Number(a), nb = Number(b);
+        if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
+        return a.localeCompare(b, 'es');
+      });
+
+    select.innerHTML = '';
+    select.appendChild(new Option(etiquetaTodos, ''));
+    lista.forEach(valor => select.appendChild(new Option(valor, valor)));
+
+    if (valorActual && lista.some(v => normTxt(v) === normTxt(valorActual))) {
+      select.value = valorActual;
+    }
+  }
+
+  // Enlaza los controles del panel de filtros con sus funciones.
   function vincularPanelFiltros() {
-    qs('btnMostrarTodosRegistros')?.addEventListener('click', () => consultarRegistrosSIG({ limpiar: true }));
-    qs('btnAplicarFiltrosSIG')?.addEventListener('click', () => consultarRegistrosSIG({ limpiar: false }));
-    qs('btnLimpiarFiltrosSIG')?.addEventListener('click', limpiarFiltros);
+    qs('btnMostrarTodosRegistros')?.addEventListener('click', mostrarTodosLosRegistros);
+    qs('btnAplicarFiltrosSIG')?.addEventListener('click', aplicarFiltrosSIG);
+    qs('btnLimpiarFiltrosSIG')?.addEventListener('click', limpiarFiltrosSIG);
     qs('btnLimpiarRegistros')?.addEventListener('click', limpiarRegistrosMapa);
+
+    ['sigMarkerRadio', 'sigMarkerColor', 'sigMarkerLinea', 'sigMarkerGrosor', 'sigMarkerOpacidad', 'sigMarkerOpacidadLinea']
+      .forEach(id => qs(id)?.addEventListener('input', actualizarEstiloPuntosEnMapa));
+  }
+
+  // Inicializa valores visuales de controles de circleMarker desde configlayers.js.
+  function inicializarControlesVisuales() {
+    const estilo = window.SIG_CONFIG?.casos?.estiloPunto || {};
+    const asignar = (id, valor) => {
+      const el = qs(id);
+      if (el && valor !== undefined && valor !== null) el.value = String(valor);
+    };
+
+    asignar('sigMarkerRadio', estilo.radio ?? 5);
+    asignar('sigMarkerColor', estilo.colorRelleno || '#0d6efd');
+    asignar('sigMarkerLinea', estilo.colorLinea || '#052c65');
+    asignar('sigMarkerGrosor', estilo.grosorLinea ?? 1);
+    asignar('sigMarkerOpacidad', estilo.opacidadRelleno ?? 0.65);
+    asignar('sigMarkerOpacidadLinea', estilo.opacidadLinea ?? 0.9);
+    actualizarVistaPreviaPunto();
   }
 
   // Inicializa el módulo de datos cuando sigindex.html ya creó el mapa y SIG_STATE.
@@ -584,18 +553,20 @@
       state.capaCasos = L.layerGroup().addTo(state.mapa);
     }
 
-    actualizarEstadisticasFiltros({ total: 0, casos: 0, puntos: 0 });
-    inicializarControlesPunto();
+    inicializarControlesVisuales();
+    actualizarTextoFiltrosActivos(filtrosActivos);
+    actualizarEstadisticasFiltros({ registros: 0, casosConCoordenadas: 0, puntos: 0 });
     vincularPanelFiltros();
     await cargarOpcionesFiltros();
   }
 
-  // Se expone una API global pequeña para que sigindex.html pueda inicializar filtros.
+  // API global mínima para que sigindex.html pueda inicializar el módulo.
   window.SIG_DATOS = {
     inicializar,
-    consultarRegistrosSIG,
+    mostrarTodosLosRegistros,
+    aplicarFiltrosSIG,
+    limpiarFiltrosSIG,
     limpiarRegistrosMapa,
-    pintarRegistrosEnMapa,
-    repintarRegistrosActuales
+    pintarRegistrosEnMapa
   };
 })();

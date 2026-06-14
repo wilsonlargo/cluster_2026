@@ -16,39 +16,32 @@ window.SIG_CONFIG = {
     zoom: 6,
     zoomMinimo: 4,
     zoomMaximo: 19,
-    // Paso de zoom fraccionado: cada clic en + o - cambia poco el tamaño del mapa.
-    pasoZoom: 0.25,
-    // Leaflet acepta niveles de zoom fraccionados cuando zoomSnap es menor que 1.
+    // Zoom fraccionado para evitar saltos bruscos al acercar o alejar.
     zoomSnap: 0.25,
-    // A mayor número, la rueda del mouse necesita más desplazamiento para cambiar de zoom.
+    pasoZoom: 0.25,
     ruedaZoomSensibilidad: 180
   },
 
-  // Configuración pública de Supabase para consultas del módulo SIG.
-  // Esta llave anon puede estar en frontend si la base expone solo funciones/vistas depuradas.
+  // Configuración de Supabase para el módulo SIG.
+  // Usa la misma anon public key o publishable key que ya funciona en index.html.
   supabase: {
     url: 'https://sjvuxlcgeswapbphsqkv.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE',
-    // Nombre de la función RPC que devuelve los casos listos para el mapa.
-    rpcCasosMapa: 'get_sig_casos_mapa_filtrado_2026',
-    // Nombre de la función RPC que devuelve listas para alimentar selects de filtros.
-    rpcOpcionesFiltros: 'get_sig_opciones_filtros_2026',
-    // Tamaño de página para superar el límite estándar de 1000 filas por respuesta.
-    tamanoPagina: 1000,
-    maxPaginas: 100
+    rpcCasosMapaFiltrado: 'get_sig_casos_mapa_filtrado_2026',
+    rpcOpcionesFiltros: 'get_sig_opciones_filtros_2026'
   },
 
-  // Estilo inicial para los puntos de casos consultados desde Supabase.
+  // Estilo inicial de los circleMarker de casos consultados desde Supabase.
   casos: {
     pane: 'pane9',
     zoomMaximoAjuste: 9,
     estiloPunto: {
       radio: 5,
       colorRelleno: '#0d6efd',
-      colorLinea: '#084298',
+      colorLinea: '#052c65',
+      grosorLinea: 1,
       opacidadRelleno: 0.65,
-      opacidadLinea: 0.9,
-      grosorLinea: 1
+      opacidadLinea: 0.9
     }
   },
 
