@@ -16,12 +16,59 @@
     pueblo: null,
     macrotipo: null,
     macroregion: null,
-    macroactor: null
+    macroactor: null,
+    poblacional: null
   };
+
+
+  // Cache local rápida. Evita depender de RPC lentas para cargar filtros y pintar mapa.
+  // Se alimenta desde tablas ligeras creadas por el SQL 10.
+  const DEPARTAMENTOS_COLOMBIA = [
+    'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bogotá, D.C.', 'Bolívar', 'Boyacá', 'Caldas',
+    'Caquetá', 'Casanare', 'Cauca', 'Cesar', 'Chocó', 'Córdoba', 'Cundinamarca', 'Guainía',
+    'Guaviare', 'Huila', 'La Guajira', 'Magdalena', 'Meta', 'Nariño', 'Norte de Santander',
+    'Putumayo', 'Quindío', 'Risaralda', 'San Andrés, Providencia y Santa Catalina', 'Santander',
+    'Sucre', 'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada'
+  ];
+
+  const MACROREGIONES_BASE = ['Amazonía', 'Andina', 'Caribe', 'Orinoquía', 'Pacífico', 'Insular'];
+
+  // Opciones locales para no depender de una consulta Supabase al abrir el SIG.
+  // Las listas abiertas (pueblo, macrotipo, macroactor) se pueden escribir manualmente
+  // y se enriquecen con resultados después de una consulta exitosa.
+  const MACROTIPOS_BASE = [
+    'Amenaza', 'Desplazamiento', 'Confinamiento', 'Homicidio', 'Reclutamiento',
+    'Riesgo', 'Hostigamiento', 'Atentado', 'Desaparición', 'Restricción a la movilidad'
+  ];
+
+
+  const COLUMNAS_PUBLICAS_SIG = [
+    'caso_id', 'fecha_evento', 'anio', 'macrotipo', 'subtipos_texto', 'departamento', 'macroregion',
+    'pueblo_texto', 'npersonas', 'nmujeres', 'nhombres', 'nmenores', 'macroactor', 'microactores_texto'
+  ].join(',');
+
+  const COLUMNAS_AVANZADAS_SIG = [
+    COLUMNAS_PUBLICAS_SIG,
+    'detalle', 'detalle_lugar', 'contextual_type', 'contextual_info', 'fuente', 'fechafuente',
+    'enlace', 'personas_texto', 'medidas_texto', 'texto_busqueda'
+  ].join(',');
+
+  const COLUMNAS_PUNTOS_SIG = [
+    'caso_id', 'municipio', 'departamento', 'macroregion', 'lat', 'lng'
+  ].join(',');
 
   // Atajo local para obtener elementos del DOM por id.
   function qs(id) {
     return document.getElementById(id);
+  }
+
+  // Evita que una consulta quede indefinidamente en estado "Consultando...".
+  function conTimeout(promesa, ms, mensaje) {
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(mensaje || 'La consulta tardó demasiado.')), ms);
+    });
+    return Promise.race([promesa, timeout]).finally(() => clearTimeout(timer));
   }
 
   // Escapa texto antes de insertarlo en popups o alertas HTML.
@@ -33,6 +80,14 @@
       '"': '&quot;',
       "'": '&#39;'
     }[caracter]));
+  }
+
+
+  // Recorta textos largos para popups y tablas sin perder seguridad visual.
+  function recortarTexto(valor, max = 120) {
+    const texto = String(valor ?? '').replace(/\s+/g, ' ').trim();
+    if (!texto) return '—';
+    return texto.length > max ? `${texto.slice(0, max).trim()}…` : texto;
   }
 
   // Normaliza texto para comparar valores sin acentos ni diferencias de mayúsculas.
@@ -49,6 +104,7 @@
     const v = String(valor ?? '').trim();
     return v ? v : null;
   }
+
 
   // Actualiza el texto de estado ubicado en la barra superior del SIG.
   function actualizarEstado(texto) {
@@ -217,7 +273,12 @@
             <tr><th class="text-muted pe-2">Macroregión</th><td>${escapeHtml(macroregion)}</td></tr>
             <tr><th class="text-muted pe-2">Pueblos</th><td>${escapeHtml(textoLista(registro.pueblo))}</td></tr>
             <tr><th class="text-muted pe-2">Macroactor</th><td>${escapeHtml(registro.macroactor || '—')}</td></tr>
-            <tr><th class="text-muted pe-2">Personas</th><td>${escapeHtml(registro.npersonas ?? 0)}</td></tr>
+            <tr><th class="text-muted pe-2">Personas</th><td>${escapeHtml(formatearNumero(registro.npersonas ?? 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Mujeres</th><td>${escapeHtml(formatearNumero(registro.nmujeres ?? 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Hombres</th><td>${escapeHtml(formatearNumero(registro.nhombres ?? 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Menores</th><td>${escapeHtml(formatearNumero(registro.nmenores ?? 0))}</td></tr>
+            ${registro.detalle ? `<tr><th class="text-muted pe-2">Detalle</th><td>${escapeHtml(recortarTexto(registro.detalle, 160))}</td></tr>` : ''}
+            ${registro.fuente ? `<tr><th class="text-muted pe-2">Fuente</th><td>${escapeHtml(recortarTexto(registro.fuente, 90))}</td></tr>` : ''}
           </tbody>
         </table>
         <div class="text-muted small">ID: ${escapeHtml(String(registro.caso_id || '').slice(0, 8))}…</div>
@@ -232,7 +293,8 @@
       pueblo: limpiarValor(qs('filtroPuebloSIG')?.value),
       macrotipo: limpiarValor(qs('filtroMacrotipoSIG')?.value),
       macroregion: limpiarValor(qs('filtroMacroregionSIG')?.value),
-      macroactor: limpiarValor(qs('filtroMacroactorSIG')?.value)
+      macroactor: limpiarValor(qs('filtroMacroactorSIG')?.value),
+      poblacional: limpiarValor(qs('filtroPoblacionalSIG')?.value)
     };
   }
 
@@ -253,6 +315,15 @@
     if (filtros.macrotipo) activos.push(`Macrotipo ${filtros.macrotipo}`);
     if (filtros.macroregion) activos.push(`Macroregión ${filtros.macroregion}`);
     if (filtros.macroactor) activos.push(`Macroactor ${filtros.macroactor}`);
+    if (filtros.poblacional) {
+      const etiquetasPoblacionales = {
+        personas: 'Personas registradas',
+        mujeres: 'Mujeres registradas',
+        hombres: 'Hombres registrados',
+        menores: 'Menores registrados'
+      };
+      activos.push(`Poblacional: ${etiquetasPoblacionales[filtros.poblacional] || filtros.poblacional}`);
+    }
 
     host.className = activos.length ? 'alert alert-primary-subtle border small mb-3' : 'alert alert-light border small mb-3';
     host.innerHTML = activos.length
@@ -260,15 +331,349 @@
       : '<div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i>Sin filtros aplicados</div><div class="text-muted">Mostrando todos los registros disponibles para el SIG.</div>';
   }
 
+  // Formatea números para que los resultados del panel sean más legibles.
+  function formatearNumero(valor) {
+    const numero = Number(valor || 0);
+    return Number.isFinite(numero) ? numero.toLocaleString('es-CO') : '0';
+  }
+
+  // Lee un valor numérico de forma segura. Si viene vacío o nulo, retorna 0.
+  function numeroSeguro(valor) {
+    const numero = Number(valor ?? 0);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+
+  // Calcula totales poblacionales de los registros filtrados.
+  // Se usa un Map por caso_id para evitar dobles conteos si una consulta futura devuelve un caso más de una vez.
+  function calcularTotalesPoblacion(registros = []) {
+    const casosUnicos = new Map();
+
+    (registros || []).forEach(registro => {
+      const llave = String(registro?.caso_id || '').trim();
+      if (!llave || casosUnicos.has(llave)) return;
+      casosUnicos.set(llave, registro);
+    });
+
+    let personas = 0;
+    let mujeres = 0;
+    let hombres = 0;
+    let menores = 0;
+
+    casosUnicos.forEach(registro => {
+      personas += numeroSeguro(registro.npersonas);
+      mujeres += numeroSeguro(registro.nmujeres);
+      hombres += numeroSeguro(registro.nhombres);
+      menores += numeroSeguro(registro.nmenores);
+    });
+
+    return { personas, mujeres, hombres, menores };
+  }
+
   // Actualiza los contadores visibles del panel de filtros.
-  function actualizarEstadisticasFiltros({ registros = 0, casosConCoordenadas = 0, puntos = 0 } = {}) {
+  function actualizarEstadisticasFiltros({
+    registros = 0,
+    casosConCoordenadas = 0,
+    puntos = 0,
+    personas = 0,
+    mujeres = 0,
+    hombres = 0,
+    menores = 0
+  } = {}) {
     const statRegistros = qs('statRegistros');
     const statCasosCoord = qs('statCasosCoord');
     const statPuntos = qs('statPuntos');
+    const statPersonas = qs('statPersonas');
+    const statMujeres = qs('statMujeres');
+    const statHombres = qs('statHombres');
+    const statMenores = qs('statMenores');
 
-    if (statRegistros) statRegistros.textContent = String(registros);
-    if (statCasosCoord) statCasosCoord.textContent = String(casosConCoordenadas);
-    if (statPuntos) statPuntos.textContent = String(puntos);
+    if (statRegistros) statRegistros.textContent = formatearNumero(registros);
+    if (statCasosCoord) statCasosCoord.textContent = formatearNumero(casosConCoordenadas);
+    if (statPuntos) statPuntos.textContent = formatearNumero(puntos);
+    if (statPersonas) statPersonas.textContent = formatearNumero(personas);
+    if (statMujeres) statMujeres.textContent = formatearNumero(mujeres);
+    if (statHombres) statHombres.textContent = formatearNumero(hombres);
+    if (statMenores) statMenores.textContent = formatearNumero(menores);
+  }
+
+
+  // ========================
+  // Mapa de calor departamental
+  // ========================
+
+  const estadoMapaCalorDepto = {
+    activo: false,
+    metrica: 'casos',
+    stats: new Map(),
+    max: 0,
+    departamentosConDato: 0
+  };
+
+  function obtenerNombreDepartamentoFeature(feature) {
+    const props = feature?.properties || {};
+    return props.DPTO_CNMBR || props.DEPARTAMEN || props.DEPTO || props.NOMBRE_DPT || props.NOMBRE || props.nombre || '';
+  }
+
+  function obtenerConfiguracionCalorDepto() {
+    return window.SIG_CONFIG?.mapaCalorDepartamentos || {
+      colorSinDato: '#f8fafc',
+      colorBorde: '#334155',
+      opacidad: 0.78,
+      grosorLinea: 1.2,
+      colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985']
+    };
+  }
+
+  function extraerDepartamentosRegistro(registro) {
+    const departamentos = new Map();
+    const agregar = valor => {
+      const texto = String(valor ?? '').trim();
+      if (!texto) return;
+      departamentos.set(normTxt(texto), texto);
+    };
+
+    if (Array.isArray(registro?.departamentos)) {
+      registro.departamentos.forEach(agregar);
+    }
+
+    agregar(registro?.departamento);
+
+    normalizarArregloJsonb(registro?.lugares).forEach(lugar => {
+      agregar(lugar?.departamento);
+    });
+
+    return Array.from(departamentos.entries()).map(([key, nombre]) => ({ key, nombre }));
+  }
+
+  function calcularEstadisticasDepartamentales(registros = []) {
+    const stats = new Map();
+    const vistos = new Set();
+
+    (registros || []).forEach((registro, indice) => {
+      const casoId = String(registro?.caso_id || registro?.id || `sin-id-${indice}`);
+      const departamentos = extraerDepartamentosRegistro(registro);
+
+      departamentos.forEach(({ key, nombre }) => {
+        if (!key) return;
+        const llaveCasoDepto = `${casoId}::${key}`;
+        if (vistos.has(llaveCasoDepto)) return;
+        vistos.add(llaveCasoDepto);
+
+        if (!stats.has(key)) {
+          stats.set(key, {
+            nombre,
+            casos: 0,
+            personas: 0,
+            mujeres: 0,
+            hombres: 0,
+            menores: 0
+          });
+        }
+
+        const item = stats.get(key);
+        item.casos += 1;
+        item.personas += numeroSeguro(registro.npersonas);
+        item.mujeres += numeroSeguro(registro.nmujeres);
+        item.hombres += numeroSeguro(registro.nhombres);
+        item.menores += numeroSeguro(registro.nmenores);
+      });
+    });
+
+    return stats;
+  }
+
+  function valorMetricaDepartamento(item, metrica) {
+    if (!item) return 0;
+    return metrica === 'personas' ? numeroSeguro(item.personas) : numeroSeguro(item.casos);
+  }
+
+  function colorCalorPorValor(valor, maximo) {
+    const cfg = obtenerConfiguracionCalorDepto();
+    const colores = Array.isArray(cfg.colores) && cfg.colores.length ? cfg.colores : ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985'];
+    if (!valor || !maximo || maximo <= 0) return cfg.colorSinDato || '#f8fafc';
+    const indice = Math.min(colores.length - 1, Math.max(0, Math.ceil((valor / maximo) * colores.length) - 1));
+    return colores[indice];
+  }
+
+  function construirEstiloBaseDepartamento(capaConfig) {
+    return {
+      pane: capaConfig?.pane || 'pane3',
+      color: capaConfig?.colorLinea || '#1f77b4',
+      weight: Number(capaConfig?.grosorLinea ?? 1),
+      opacity: Number(capaConfig?.opacidad ?? 0.3),
+      fillColor: capaConfig?.colorCapa || '#bdd7ee',
+      fillOpacity: Number(capaConfig?.opacidad ?? 0.3),
+      lineCap: 'round',
+      lineJoin: 'round'
+    };
+  }
+
+  function obtenerEstiloDepartamentoCalor(feature, capaConfig, estiloBase = null) {
+    if (capaConfig?.id !== 'departamentos' || !estadoMapaCalorDepto.activo) return null;
+
+    const cfg = obtenerConfiguracionCalorDepto();
+    const nombre = obtenerNombreDepartamentoFeature(feature);
+    const item = estadoMapaCalorDepto.stats.get(normTxt(nombre));
+    const valor = valorMetricaDepartamento(item, estadoMapaCalorDepto.metrica);
+    const base = estiloBase || construirEstiloBaseDepartamento(capaConfig);
+
+    return {
+      ...base,
+      fillColor: colorCalorPorValor(valor, estadoMapaCalorDepto.max),
+      fillOpacity: valor > 0 ? Number(cfg.opacidad ?? 0.78) : 0.16,
+      color: cfg.colorBorde || base.color || '#334155',
+      weight: valor > 0 ? Number(cfg.grosorLinea ?? 1.2) : Math.max(0.5, Number(base.weight ?? 1)),
+      opacity: 0.9
+    };
+  }
+
+  function crearPopupDepartamentoCalor(feature, nombreCapa) {
+    const nombre = obtenerNombreDepartamentoFeature(feature);
+    if (!estadoMapaCalorDepto.activo || !nombre || normTxt(nombreCapa) !== 'departamentos') return null;
+
+    const item = estadoMapaCalorDepto.stats.get(normTxt(nombre)) || {
+      casos: 0,
+      personas: 0,
+      mujeres: 0,
+      hombres: 0,
+      menores: 0
+    };
+    const metrica = estadoMapaCalorDepto.metrica === 'personas' ? 'personas' : 'casos';
+    const valor = valorMetricaDepartamento(item, metrica);
+
+    return `
+      <div style="min-width:260px">
+        <div class="fw-bold mb-1">${escapeHtml(nombre)}</div>
+        <div class="small text-muted mb-2">Mapa de calor departamental · ${escapeHtml(metrica === 'personas' ? 'Número de personas' : 'Número de casos')}</div>
+        <table class="table table-sm mb-2">
+          <tbody>
+            <tr><th class="text-muted pe-2">Valor de intensidad</th><td><strong>${escapeHtml(formatearNumero(valor))}</strong></td></tr>
+            <tr><th class="text-muted pe-2">Casos</th><td>${escapeHtml(formatearNumero(item.casos || 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Personas</th><td>${escapeHtml(formatearNumero(item.personas || 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Mujeres</th><td>${escapeHtml(formatearNumero(item.mujeres || 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Hombres</th><td>${escapeHtml(formatearNumero(item.hombres || 0))}</td></tr>
+            <tr><th class="text-muted pe-2">Menores</th><td>${escapeHtml(formatearNumero(item.menores || 0))}</td></tr>
+          </tbody>
+        </table>
+        <div class="small text-muted">Cruce por <code>DPTO_CNMBR</code>. Los casos multidepartamentales se contabilizan una vez por departamento.</div>
+      </div>`;
+  }
+
+  function actualizarLeyendaMapaCalor(maximo, metrica) {
+    const host = qs('heatDeptLeyendaSIG');
+    if (!host) return;
+    const cfg = obtenerConfiguracionCalorDepto();
+    const colores = Array.isArray(cfg.colores) && cfg.colores.length ? cfg.colores : [];
+    if (!estadoMapaCalorDepto.activo || !colores.length || !maximo) {
+      host.classList.add('d-none');
+      host.innerHTML = '';
+      return;
+    }
+
+    host.classList.remove('d-none');
+    host.innerHTML = colores.map((color, i) => {
+      const desde = i === 0 ? 1 : Math.floor((maximo * i) / colores.length) + 1;
+      const hasta = Math.max(desde, Math.ceil((maximo * (i + 1)) / colores.length));
+      const etiqueta = i === colores.length - 1 ? `${formatearNumero(desde)}+` : `${formatearNumero(desde)}-${formatearNumero(hasta)}`;
+      return `<div class="heat-legend-item" style="background:${escapeHtml(color)}" title="${escapeHtml(metrica)} ${escapeHtml(etiqueta)}">${escapeHtml(etiqueta)}</div>`;
+    }).join('');
+  }
+
+  function actualizarEstadoMapaCalor({ metrica = estadoMapaCalorDepto.metrica, departamentos = 0, maximo = 0 } = {}) {
+    const host = qs('heatDeptEstadoSIG');
+    if (!host) return;
+
+    if (!estadoMapaCalorDepto.activo) {
+      host.textContent = 'Mapa de calor inactivo. Ejecuta un filtro o comando y luego aplica la intensidad departamental.';
+      actualizarLeyendaMapaCalor(0, metrica);
+      return;
+    }
+
+    const etiqueta = metrica === 'personas' ? 'personas' : 'casos';
+    host.innerHTML = `Activo por <strong>${escapeHtml(etiqueta)}</strong>. Departamentos con dato: <strong>${formatearNumero(departamentos)}</strong>. Máximo: <strong>${formatearNumero(maximo)}</strong>.`;
+    actualizarLeyendaMapaCalor(maximo, etiqueta);
+  }
+
+  function aplicarEstiloMapaCalorDepartamentos() {
+    const state = window.SIG_STATE;
+    const capa = state?.capasPorId?.get('departamentos');
+    const capaConfig = window.SIG_CONFIG?.capas?.find(c => c.id === 'departamentos');
+    if (!capa || !capaConfig) return false;
+
+    capa.eachLayer(layer => {
+      if (!layer?.setStyle) return;
+      const estilo = estadoMapaCalorDepto.activo
+        ? obtenerEstiloDepartamentoCalor(layer.feature, capaConfig, construirEstiloBaseDepartamento(capaConfig))
+        : construirEstiloBaseDepartamento(capaConfig);
+      layer.setStyle(estilo);
+    });
+    return true;
+  }
+
+  function refrescarMapaCalorDepartamentos(opciones = {}) {
+    const state = window.SIG_STATE;
+    if (!state) return false;
+
+    if (estadoMapaCalorDepto.activo) {
+      const stats = calcularEstadisticasDepartamentales(state.casosConsultados || []);
+      estadoMapaCalorDepto.stats = stats;
+      estadoMapaCalorDepto.max = Array.from(stats.values()).reduce((max, item) => Math.max(max, valorMetricaDepartamento(item, estadoMapaCalorDepto.metrica)), 0);
+      estadoMapaCalorDepto.departamentosConDato = Array.from(stats.values()).filter(item => valorMetricaDepartamento(item, estadoMapaCalorDepto.metrica) > 0).length;
+    }
+
+    const aplicado = aplicarEstiloMapaCalorDepartamentos();
+    if (!opciones.silencioso) {
+      actualizarEstadoMapaCalor({
+        metrica: estadoMapaCalorDepto.metrica,
+        departamentos: estadoMapaCalorDepto.departamentosConDato,
+        maximo: estadoMapaCalorDepto.max
+      });
+    }
+    return aplicado;
+  }
+
+  async function asegurarCapaDepartamentosActiva() {
+    const state = window.SIG_STATE;
+    if (state?.capasPorId?.has('departamentos')) return true;
+    if (window.SIG_CAPAS?.activarCapaPorId) {
+      await window.SIG_CAPAS.activarCapaPorId('departamentos');
+      return Boolean(state?.capasPorId?.has('departamentos'));
+    }
+    return false;
+  }
+
+  async function aplicarMapaCalorDepartamentos(opciones = {}) {
+    const state = window.SIG_STATE;
+    const registros = state?.casosConsultados || [];
+    const metrica = opciones.metrica || qs('heatDeptMetricaSIG')?.value || 'casos';
+
+    estadoMapaCalorDepto.activo = true;
+    estadoMapaCalorDepto.metrica = metrica === 'personas' ? 'personas' : 'casos';
+    if (qs('heatDeptMetricaSIG')) qs('heatDeptMetricaSIG').value = estadoMapaCalorDepto.metrica;
+
+    await asegurarCapaDepartamentosActiva();
+    refrescarMapaCalorDepartamentos({ silencioso: true });
+    actualizarEstadoMapaCalor({
+      metrica: estadoMapaCalorDepto.metrica,
+      departamentos: estadoMapaCalorDepto.departamentosConDato,
+      maximo: estadoMapaCalorDepto.max
+    });
+
+    if (!registros.length && !opciones.silencioso) {
+      mostrarAvisoFiltros('warning', 'No hay registros vigentes para construir el mapa de calor. Ejecuta primero un filtro, “Mostrar todos” o una consulta de consola.');
+    } else if (!opciones.silencioso) {
+      mostrarAvisoFiltros('info', `Mapa de calor departamental aplicado por ${estadoMapaCalorDepto.metrica === 'personas' ? 'personas' : 'casos'}.`);
+    }
+  }
+
+  function limpiarMapaCalorDepartamentos() {
+    estadoMapaCalorDepto.activo = false;
+    estadoMapaCalorDepto.stats = new Map();
+    estadoMapaCalorDepto.max = 0;
+    estadoMapaCalorDepto.departamentosConDato = 0;
+    aplicarEstiloMapaCalorDepartamentos();
+    actualizarEstadoMapaCalor();
+    mostrarAvisoFiltros('secondary', 'Mapa de calor departamental limpiado. La capa Departamentos conserva su estilo base.');
   }
 
   // Limpia la capa de puntos del mapa, pero no borra la configuración de filtros del panel.
@@ -278,7 +683,17 @@
 
     if (state.capaCasos) state.capaCasos.clearLayers();
     state.casosConsultados = [];
-    actualizarEstadisticasFiltros({ registros: 0, casosConCoordenadas: 0, puntos: 0 });
+    if (estadoMapaCalorDepto.activo) refrescarMapaCalorDepartamentos({ silencioso: false });
+    actualizarEstadisticasFiltros({
+      registros: 0,
+      casosConCoordenadas: 0,
+      puntos: 0,
+      personas: 0,
+      mujeres: 0,
+      hombres: 0,
+      menores: 0
+    });
+    actualizarEstadoMapaCalor();
     actualizarEstado('Registros limpiados del mapa');
   }
 
@@ -336,49 +751,397 @@
     };
   }
 
-  // Consulta una RPC paginada hasta traer todos los registros disponibles.
-  async function consultarRpcPaginada(nombreFuncion, parametros = {}, tamanoPagina = 1000) {
+
+  // Consulta tablas ligeras en páginas. El SQL 10 usa tablas físicas livianas, no vistas pesadas ni RPC.
+  async function consultarTablaPaginada(nombreTabla, columnas, opciones = {}) {
     const state = window.SIG_STATE;
     const cliente = state?.supabaseClient;
-    if (!cliente) throw new Error('No hay conexión Supabase configurada.');
+    if (!cliente) throw new Error('No hay cliente Supabase disponible.');
 
+    const cfg = window.SIG_CONFIG?.supabase || {};
+    const tamano = Number(opciones.tamanoPagina || cfg.tamanoPagina || 500);
+    const maxPaginas = Number(opciones.maxPaginas || cfg.maxPaginas || 20);
+    const timeoutMs = Number(opciones.timeoutMs || cfg.timeoutConsultaMs || 20000);
     const acumulado = [];
     let desde = 0;
+    let pagina = 0;
 
-    while (true) {
-      const hasta = desde + tamanoPagina - 1;
-      const { data, error } = await cliente
-        .rpc(nombreFuncion, parametros)
-        .range(desde, hasta);
+    while (pagina < maxPaginas) {
+      const hasta = desde + tamano - 1;
+      actualizarEstado(`Consultando ${nombreTabla} ${desde + 1}-${hasta + 1}...`);
 
+      let consulta = cliente.from(nombreTabla).select(columnas);
+      if (typeof opciones.aplicarConsulta === 'function') consulta = opciones.aplicarConsulta(consulta);
+      if (opciones.ordenFecha !== false) consulta = consulta.order('fecha_evento', { ascending: false, nullsFirst: false });
+      consulta = consulta.range(desde, hasta);
+
+      const respuesta = await conTimeout(
+        consulta,
+        timeoutMs,
+        `La consulta a la tabla ${nombreTabla} superó ${Math.round(timeoutMs / 1000)} segundos.`
+      );
+
+      const { data, error } = respuesta || {};
       if (error) throw error;
 
-      const pagina = Array.isArray(data) ? data : [];
-      acumulado.push(...pagina);
+      const lote = Array.isArray(data) ? data : [];
+      acumulado.push(...lote);
+      if (lote.length < tamano) break;
 
-      if (pagina.length < tamanoPagina) break;
-      desde += tamanoPagina;
+      pagina += 1;
+      desde += tamano;
     }
 
     return acumulado;
   }
 
-  // Ejecuta la consulta filtrada y actualiza mapa, texto y conteos.
-  async function consultarYPintarCasosSIG(filtros, opciones = {}) {
+  function aplicarFiltrosPanelEnConsulta(consulta, filtros = {}) {
+    if (filtros.anio) consulta = consulta.eq('anio', Number(filtros.anio));
+    if (filtros.departamento) consulta = consulta.eq('departamento', filtros.departamento);
+    if (filtros.macrotipo) consulta = consulta.eq('macrotipo', filtros.macrotipo);
+    if (filtros.macroregion) consulta = consulta.eq('macroregion', filtros.macroregion);
+    if (filtros.macroactor) consulta = consulta.eq('macroactor', filtros.macroactor);
+    if (filtros.pueblo) consulta = consulta.ilike('pueblo_texto', `%${filtros.pueblo}%`);
+
+    const poblacional = normTxt(filtros.poblacional);
+    if (poblacional === 'personas') consulta = consulta.gt('npersonas', 0);
+    if (poblacional === 'mujeres') consulta = consulta.gt('nmujeres', 0);
+    if (poblacional === 'hombres') consulta = consulta.gt('nhombres', 0);
+    if (poblacional === 'menores') consulta = consulta.gt('nmenores', 0);
+    return consulta;
+  }
+
+  async function obtenerIdsCasosPorMunicipio(municipio) {
+    const texto = String(municipio || '').trim();
+    if (!texto) return null;
+    const tabla = window.SIG_CONFIG?.supabase?.tablaPuntosLite || 'sig_puntos_lite_2026';
+    const puntos = await consultarTablaPaginada(tabla, 'caso_id,municipio', {
+      ordenFecha: false,
+      tamanoPagina: 1000,
+      aplicarConsulta: q => q.ilike('municipio', `%${texto}%`)
+    });
+    return Array.from(new Set((puntos || []).map(p => p.caso_id).filter(Boolean)));
+  }
+
+  function aplicarParametrosConsolaEnConsulta(consulta, parametros = {}, idsMunicipio = null) {
+    const p = normalizarParametrosRpc(parametros);
+    if (p.p_anio !== null) consulta = consulta.eq('anio', Number(p.p_anio));
+    if (p.p_anio_inicio !== null) consulta = consulta.gte('anio', Number(p.p_anio_inicio));
+    if (p.p_anio_fin !== null) consulta = consulta.lte('anio', Number(p.p_anio_fin));
+    if (p.p_departamento) consulta = consulta.eq('departamento', p.p_departamento);
+    if (p.p_pueblo) consulta = consulta.ilike('pueblo_texto', `%${p.p_pueblo}%`);
+    if (p.p_macrotipo) consulta = consulta.eq('macrotipo', p.p_macrotipo);
+    if (p.p_macroregion) consulta = consulta.eq('macroregion', p.p_macroregion);
+    if (p.p_macroactor) consulta = consulta.eq('macroactor', p.p_macroactor);
+    if (p.p_texto) consulta = consulta.ilike('texto_busqueda', `%${p.p_texto}%`);
+    if (Array.isArray(idsMunicipio)) consulta = idsMunicipio.length ? consulta.in('caso_id', idsMunicipio) : consulta.eq('caso_id', '00000000-0000-0000-0000-000000000000');
+
+    const poblacional = normTxt(p.p_poblacional);
+    if (poblacional === 'personas') consulta = consulta.gt('npersonas', 0);
+    if (poblacional === 'mujeres') consulta = consulta.gt('nmujeres', 0);
+    if (poblacional === 'hombres') consulta = consulta.gt('nhombres', 0);
+    if (poblacional === 'menores') consulta = consulta.gt('nmenores', 0);
+
+    const rangos = [
+      ['personas', 'npersonas'], ['mujeres', 'nmujeres'], ['hombres', 'nhombres'], ['menores', 'nmenores']
+    ];
+    for (const [campo, columna] of rangos) {
+      const min = p[`p_min_${campo}`];
+      const max = p[`p_max_${campo}`];
+      if (min !== null) consulta = consulta.gte(columna, Number(min));
+      if (max !== null) consulta = consulta.lte(columna, Number(max));
+    }
+    return consulta;
+  }
+
+  async function cargarPuntosPorCasos(casoIds = []) {
+    const ids = Array.from(new Set((casoIds || []).map(String).filter(Boolean)));
+    if (!ids.length) return new Map();
+
+    const tabla = window.SIG_CONFIG?.supabase?.tablaPuntosLite || 'sig_puntos_lite_2026';
+    const mapa = new Map();
+    const tamanoLote = 450;
+
+    for (let i = 0; i < ids.length; i += tamanoLote) {
+      const loteIds = ids.slice(i, i + tamanoLote);
+      const puntos = await consultarTablaPaginada(tabla, COLUMNAS_PUNTOS_SIG, {
+        ordenFecha: false,
+        tamanoPagina: 1000,
+        aplicarConsulta: q => q.in('caso_id', loteIds)
+      });
+      (puntos || []).forEach(punto => {
+        const key = String(punto.caso_id);
+        if (!mapa.has(key)) mapa.set(key, []);
+        mapa.get(key).push({
+          municipio: punto.municipio,
+          departamento: punto.departamento,
+          macroregion: punto.macroregion,
+          lat: punto.lat,
+          lng: punto.lng
+        });
+      });
+    }
+
+    return mapa;
+  }
+
+  async function adjuntarLugaresARegistros(registros = []) {
+    const mapaPuntos = await cargarPuntosPorCasos((registros || []).map(r => r.caso_id));
+    return (registros || []).map(registro => ({
+      ...registro,
+      lugares: mapaPuntos.get(String(registro.caso_id)) || []
+    }));
+  }
+
+  async function consultarCasosPublicosFiltrados(filtros = {}) {
+    const tabla = window.SIG_CONFIG?.supabase?.tablaCasosLite || window.SIG_CONFIG?.supabase?.tablaCasosPublica || 'sig_casos_lite_2026';
+    const registros = await consultarTablaPaginada(tabla, COLUMNAS_PUBLICAS_SIG, {
+      aplicarConsulta: q => aplicarFiltrosPanelEnConsulta(q, filtros)
+    });
+    return adjuntarLugaresARegistros(registros);
+  }
+
+  async function consultarCasosAvanzadosFiltrados(parametros = {}) {
+    const p = normalizarParametrosRpc(parametros);
+    const idsMunicipio = p.p_municipio ? await obtenerIdsCasosPorMunicipio(p.p_municipio) : null;
+    const tabla = window.SIG_CONFIG?.supabase?.tablaCasosDetalle || window.SIG_CONFIG?.supabase?.tablaCasosAvanzada || 'sig_casos_detalle_2026';
+    const registros = await consultarTablaPaginada(tabla, COLUMNAS_AVANZADAS_SIG, {
+      aplicarConsulta: q => aplicarParametrosConsolaEnConsulta(q, p, idsMunicipio)
+    });
+    return adjuntarLugaresARegistros(registros);
+  }
+
+  async function cargarCachePublicaSIG(opciones = {}) {
+    const state = window.SIG_STATE;
+    if (!state) throw new Error('SIG_STATE no está disponible.');
+    if (!opciones.forzar && Array.isArray(state.cachePublicaSIG)) return state.cachePublicaSIG;
+    const registros = await consultarCasosPublicosFiltrados({});
+    state.cachePublicaSIG = registros;
+    return registros;
+  }
+
+  async function cargarCacheAvanzadaSIG(opciones = {}) {
+    const state = window.SIG_STATE;
+    if (!state) throw new Error('SIG_STATE no está disponible.');
+    if (!opciones.forzar && Array.isArray(state.cacheAvanzadaSIG)) return state.cacheAvanzadaSIG;
+    const registros = await consultarCasosAvanzadosFiltrados({});
+    state.cacheAvanzadaSIG = registros;
+    return registros;
+  }
+
+  function extraerTextoPueblo(registro) {
+    if (registro?.pueblo_texto) return String(registro.pueblo_texto || '');
+    const partes = [];
+    normalizarArregloJsonb(registro?.pueblo).forEach(item => {
+      if (typeof item === 'string') partes.push(item);
+      else if (item && typeof item === 'object') partes.push(item.nombre || item.pueblo || item.label || item.name || JSON.stringify(item));
+    });
+    if (typeof registro?.pueblo === 'string') partes.push(registro.pueblo);
+    return partes.filter(Boolean).join(' | ');
+  }
+
+  function extraerValoresPueblo(registro) {
+    if (registro?.pueblo_texto) {
+      return String(registro.pueblo_texto || '').split('|').map(v => v.trim()).filter(Boolean);
+    }
+    const valores = [];
+    normalizarArregloJsonb(registro?.pueblo).forEach(item => {
+      if (typeof item === 'string') valores.push(item);
+      else if (item && typeof item === 'object') valores.push(item.nombre || item.pueblo || item.label || item.name || '');
+    });
+    return valores.map(v => String(v || '').trim()).filter(Boolean);
+  }
+
+  function extraerMunicipiosRegistro(registro) {
+    return normalizarArregloJsonb(registro?.lugares)
+      .map(lugar => lugar?.municipio)
+      .map(v => String(v || '').trim())
+      .filter(Boolean);
+  }
+
+  function compararExactoONormalizado(valor, filtro) {
+    if (!filtro) return true;
+    return normTxt(valor) === normTxt(filtro);
+  }
+
+  function compararListaONormalizado(valores, filtro) {
+    if (!filtro) return true;
+    const nf = normTxt(filtro);
+    return (valores || []).some(valor => normTxt(valor) === nf || normTxt(valor).includes(nf));
+  }
+
+  function registroCumpleFiltroPanel(registro, filtros = {}) {
+    if (filtros.anio && Number(registro.anio || 0) !== Number(filtros.anio)) return false;
+
+    if (filtros.departamento) {
+      const departamentos = [registro.departamento, ...(Array.isArray(registro.departamentos) ? registro.departamentos : [])];
+      normalizarArregloJsonb(registro.lugares).forEach(lugar => departamentos.push(lugar?.departamento));
+      if (!compararListaONormalizado(departamentos, filtros.departamento)) return false;
+    }
+
+    if (filtros.pueblo && !compararListaONormalizado(extraerValoresPueblo(registro).concat(extraerTextoPueblo(registro)), filtros.pueblo)) return false;
+    if (filtros.macrotipo && !compararExactoONormalizado(registro.macrotipo, filtros.macrotipo)) return false;
+    if (filtros.macroregion) {
+      const macroregiones = [registro.macroregion, ...(Array.isArray(registro.macroregiones) ? registro.macroregiones : [])];
+      normalizarArregloJsonb(registro.lugares).forEach(lugar => macroregiones.push(lugar?.macroregion));
+      if (!compararListaONormalizado(macroregiones, filtros.macroregion)) return false;
+    }
+    if (filtros.macroactor && !compararExactoONormalizado(registro.macroactor, filtros.macroactor)) return false;
+
+    const poblacional = normTxt(filtros.poblacional);
+    if (poblacional === 'personas' && numeroSeguro(registro.npersonas) <= 0) return false;
+    if (poblacional === 'mujeres' && numeroSeguro(registro.nmujeres) <= 0) return false;
+    if (poblacional === 'hombres' && numeroSeguro(registro.nhombres) <= 0) return false;
+    if (poblacional === 'menores' && numeroSeguro(registro.nmenores) <= 0) return false;
+
+    return true;
+  }
+
+  function registroCumpleParametrosConsola(registro, params = {}) {
+    const p = normalizarParametrosRpc(params);
+    const anio = Number(registro.anio || 0);
+
+    if (p.p_anio !== null && anio !== Number(p.p_anio)) return false;
+    if (p.p_anio_inicio !== null && anio < Number(p.p_anio_inicio)) return false;
+    if (p.p_anio_fin !== null && anio > Number(p.p_anio_fin)) return false;
+
+    if (p.p_departamento) {
+      const departamentos = [registro.departamento, ...(Array.isArray(registro.departamentos) ? registro.departamentos : [])];
+      normalizarArregloJsonb(registro.lugares).forEach(lugar => departamentos.push(lugar?.departamento));
+      if (!compararListaONormalizado(departamentos, p.p_departamento)) return false;
+    }
+
+    if (p.p_municipio && !compararListaONormalizado(extraerMunicipiosRegistro(registro), p.p_municipio)) return false;
+    if (p.p_pueblo && !compararListaONormalizado(extraerValoresPueblo(registro).concat(extraerTextoPueblo(registro)), p.p_pueblo)) return false;
+    if (p.p_macrotipo && !compararExactoONormalizado(registro.macrotipo, p.p_macrotipo)) return false;
+    if (p.p_macroregion) {
+      const macroregiones = [registro.macroregion, ...(Array.isArray(registro.macroregiones) ? registro.macroregiones : [])];
+      normalizarArregloJsonb(registro.lugares).forEach(lugar => macroregiones.push(lugar?.macroregion));
+      if (!compararListaONormalizado(macroregiones, p.p_macroregion)) return false;
+    }
+    if (p.p_macroactor && !compararExactoONormalizado(registro.macroactor, p.p_macroactor)) return false;
+
+    const poblacional = normTxt(p.p_poblacional);
+    if (poblacional === 'personas' && numeroSeguro(registro.npersonas) <= 0) return false;
+    if (poblacional === 'mujeres' && numeroSeguro(registro.nmujeres) <= 0) return false;
+    if (poblacional === 'hombres' && numeroSeguro(registro.nhombres) <= 0) return false;
+    if (poblacional === 'menores' && numeroSeguro(registro.nmenores) <= 0) return false;
+
+    const rangos = [
+      ['personas', 'npersonas'], ['mujeres', 'nmujeres'], ['hombres', 'nhombres'], ['menores', 'nmenores']
+    ];
+    for (const [campo, prop] of rangos) {
+      const valor = numeroSeguro(registro[prop]);
+      const min = p[`p_min_${campo}`];
+      const max = p[`p_max_${campo}`];
+      if (min !== null && valor < Number(min)) return false;
+      if (max !== null && valor > Number(max)) return false;
+    }
+
+    if (p.p_texto) {
+      const texto = normTxt([
+        registro.detalle,
+        registro.contextual_info,
+        registro.detalle_lugar,
+        registro.fuente,
+        registro.enlace,
+        registro.macrotipo,
+        registro.macroactor,
+        registro.departamento,
+        registro.macroregion,
+        extraerTextoPueblo(registro),
+        extraerMunicipiosRegistro(registro).join(' ')
+      ].join(' '));
+      if (!texto.includes(normTxt(p.p_texto))) return false;
+    }
+
+    return true;
+  }
+
+  function construirOpcionesFiltrosDesdeRegistros(registros = []) {
+    const opciones = {
+      anios: [],
+      departamentos: new Set(DEPARTAMENTOS_COLOMBIA),
+      pueblos: new Set(),
+      macrotipos: new Set(),
+      macroregiones: new Set(MACROREGIONES_BASE),
+      macroactores: new Set()
+    };
+
+    const anioActual = new Date().getFullYear();
+    for (let anio = anioActual; anio >= 2016; anio -= 1) opciones.anios.push(String(anio));
+
+    (registros || []).forEach(registro => {
+      if (registro.departamento) opciones.departamentos.add(registro.departamento);
+      if (registro.macrotipo) opciones.macrotipos.add(registro.macrotipo);
+      if (registro.macroregion) opciones.macroregiones.add(registro.macroregion);
+      if (registro.macroactor) opciones.macroactores.add(registro.macroactor);
+      extraerValoresPueblo(registro).forEach(pueblo => opciones.pueblos.add(pueblo));
+      normalizarArregloJsonb(registro.lugares).forEach(lugar => {
+        if (lugar?.departamento) opciones.departamentos.add(lugar.departamento);
+        if (lugar?.macroregion) opciones.macroregiones.add(lugar.macroregion);
+      });
+    });
+
+    return {
+      anios: opciones.anios,
+      departamentos: Array.from(opciones.departamentos),
+      pueblos: Array.from(opciones.pueblos),
+      macrotipos: Array.from(opciones.macrotipos),
+      macroregiones: Array.from(opciones.macroregiones),
+      macroactores: Array.from(opciones.macroactores)
+    };
+  }
+
+  // Consulta una RPC paginada hasta traer todos los registros disponibles.
+  async function consultarRpcPaginada(nombreFuncion, parametros = {}, tamanoPagina = null) {
     const state = window.SIG_STATE;
     const cfg = window.SIG_CONFIG;
-    const nombreFuncion = cfg?.supabase?.rpcCasosMapaFiltrado || 'get_sig_casos_mapa_filtrado_2026';
+    const cliente = state?.supabaseClient;
+    if (!cliente) throw new Error('No hay conexión Supabase configurada.');
+
+    const tamano = Number(tamanoPagina || cfg?.supabase?.tamanoPagina || 1000);
+    const maxPaginas = Number(cfg?.supabase?.maxPaginas || 20);
+    const timeoutMs = Number(cfg?.supabase?.timeoutConsultaMs || 30000);
+    const acumulado = [];
+    let desde = 0;
+    let pagina = 0;
+
+    while (pagina < maxPaginas) {
+      const hasta = desde + tamano - 1;
+      actualizarEstado(`Consultando Supabase ${desde + 1}-${hasta + 1}...`);
+
+      const respuesta = await conTimeout(
+        cliente.rpc(nombreFuncion, parametros).range(desde, hasta),
+        timeoutMs,
+        `La consulta a ${nombreFuncion} superó ${Math.round(timeoutMs / 1000)} segundos. Revisa la función en Supabase o intenta un filtro más específico.`
+      );
+
+      const { data, error } = respuesta || {};
+      if (error) throw error;
+
+      const lote = Array.isArray(data) ? data : [];
+      acumulado.push(...lote);
+
+      if (lote.length < tamano) break;
+
+      pagina += 1;
+      desde += tamano;
+    }
+
+    if (pagina >= maxPaginas) {
+      console.warn(`Consulta detenida al alcanzar ${maxPaginas} páginas. Registros acumulados: ${acumulado.length}`);
+      mostrarAvisoFiltros('warning', `La consulta alcanzó el límite de ${maxPaginas} páginas. Se muestran ${formatearNumero(acumulado.length)} registros. Puedes aumentar maxPaginas en configlayers.js si lo necesitas.`);
+    }
+
+    return acumulado;
+  }
+
+  // Ejecuta la consulta filtrada usando la cache pública local y actualiza mapa, texto y conteos.
+  async function consultarYPintarCasosSIG(filtros, opciones = {}) {
+    const state = window.SIG_STATE;
     const boton = opciones.boton || null;
     const htmlOriginal = boton ? boton.innerHTML : '';
-
-    const parametros = {
-      p_anio: filtros.anio ? Number(filtros.anio) : null,
-      p_departamento: filtros.departamento || null,
-      p_pueblo: filtros.pueblo || null,
-      p_macrotipo: filtros.macrotipo || null,
-      p_macroregion: filtros.macroregion || null,
-      p_macroactor: filtros.macroactor || null
-    };
 
     try {
       if (boton) {
@@ -387,14 +1150,17 @@
       }
 
       limpiarAvisoFiltros();
-      actualizarEstado('Consultando filtros en Supabase...');
-      mostrarAvisoFiltros('info', 'Consultando registros vinculados al filtro territorial...');
+      actualizarEstado('Consultando tablas ligeras SIG...');
+      mostrarAvisoFiltros('info', 'Aplicando filtros sobre tablas ligeras del SIG...');
 
-      const registros = await consultarRpcPaginada(nombreFuncion, parametros);
+      const registros = await consultarCasosPublicosFiltrados(filtros || {});
       state.casosConsultados = registros;
+      actualizarOpcionesDesdeRegistros(registros);
 
       const resumen = pintarRegistrosEnMapa(registros);
-      actualizarEstadisticasFiltros(resumen);
+      const poblacion = calcularTotalesPoblacion(registros);
+      actualizarEstadisticasFiltros({ ...resumen, ...poblacion });
+      if (estadoMapaCalorDepto.activo) refrescarMapaCalorDepartamentos({ silencioso: false });
       limpiarAvisoFiltros();
 
       if (resumen.puntos) {
@@ -405,8 +1171,12 @@
       }
     } catch (error) {
       console.error(error);
-      mostrarAvisoFiltros('danger', error?.message || 'No fue posible consultar los registros del SIG.');
-      actualizarEstado('Error consultando Supabase');
+      const mensaje = error?.message || 'No fue posible consultar las tablas ligeras del SIG.';
+      const ayuda = mensaje.includes('sig_casos_lite_2026') || mensaje.includes('sig_puntos_lite_2026') || mensaje.includes('relation') || mensaje.includes('does not exist') || mensaje.includes('404')
+        ? ' Ejecuta el SQL 10 de tablas ligeras SIG y recarga con Ctrl+F5.'
+        : '';
+      mostrarAvisoFiltros('danger', `${mensaje}${ayuda}`);
+      actualizarEstado('Error consultando tablas ligeras SIG');
     } finally {
       if (boton) {
         boton.disabled = false;
@@ -415,16 +1185,22 @@
     }
   }
 
-  // Acción directa: mostrar todos los registros equivale a consultar con filtros vacíos.
-  async function mostrarTodosLosRegistros() {
-    const filtros = {
+  // Devuelve todos los filtros vacíos en una sola estructura.
+  function crearFiltrosVacios() {
+    return {
       anio: null,
       departamento: null,
       pueblo: null,
       macrotipo: null,
       macroregion: null,
-      macroactor: null
+      macroactor: null,
+      poblacional: null
     };
+  }
+
+  // Acción directa: mostrar todos los registros equivale a consultar con filtros vacíos.
+  async function mostrarTodosLosRegistros() {
+    const filtros = crearFiltrosVacios();
     guardarFiltrosActivos(filtros);
     actualizarTextoFiltrosActivos(filtros);
     await consultarYPintarCasosSIG(filtros, { boton: qs('btnMostrarTodosRegistros') });
@@ -440,52 +1216,74 @@
 
   // Limpia los controles del panel y vuelve a mostrar todos los registros.
   async function limpiarFiltrosSIG() {
-    ['filtroAnioSIG', 'filtroDepartamentoSIG', 'filtroPuebloSIG', 'filtroMacrotipoSIG', 'filtroMacroregionSIG', 'filtroMacroactorSIG']
-      .forEach(id => {
-        const el = qs(id);
-        if (el) el.value = '';
-      });
+    [
+      'filtroAnioSIG',
+      'filtroDepartamentoSIG',
+      'filtroPuebloSIG',
+      'filtroMacrotipoSIG',
+      'filtroMacroregionSIG',
+      'filtroMacroactorSIG',
+      'filtroPoblacionalSIG'
+    ].forEach(id => {
+      const el = qs(id);
+      if (el) el.value = '';
+    });
 
-    const filtros = {
-      anio: null,
-      departamento: null,
-      pueblo: null,
-      macrotipo: null,
-      macroregion: null,
-      macroactor: null
-    };
+    const filtros = crearFiltrosVacios();
 
     guardarFiltrosActivos(filtros);
     actualizarTextoFiltrosActivos(filtros);
     await consultarYPintarCasosSIG(filtros, { boton: qs('btnLimpiarFiltrosSIG') });
   }
 
-  // Carga opciones de filtros desde la función RPC y llena los select.
+  // Carga opciones de filtros locales sin consultar Supabase al iniciar.
+  // Esto evita que una tabla bloqueada o una llamada lenta deje el SIG pegado en "Consultando...".
   async function cargarOpcionesFiltros() {
-    const state = window.SIG_STATE;
-    const cfg = window.SIG_CONFIG;
-    const cliente = state?.supabaseClient;
-    if (!cliente) return;
+    const anioActual = new Date().getFullYear();
+    const aniosFallback = [];
+    for (let anio = anioActual; anio >= 2016; anio -= 1) aniosFallback.push(String(anio));
 
-    const nombreFuncion = cfg?.supabase?.rpcOpcionesFiltros || 'get_sig_opciones_filtros_2026';
+    llenarSelect('filtroAnioSIG', aniosFallback, 'Todos los años');
+    llenarSelect('filtroDepartamentoSIG', DEPARTAMENTOS_COLOMBIA, 'Todos los departamentos');
+    llenarSelect('filtroMacroregionSIG', MACROREGIONES_BASE, 'Todas las macroregiones');
+    llenarDatalist('listaMacrotiposSIG', MACROTIPOS_BASE);
+    llenarDatalist('listaPueblosSIG', []);
+    llenarDatalist('listaMacroactoresSIG', []);
 
-    try {
-      const { data, error } = await cliente.rpc(nombreFuncion);
-      if (error) throw error;
+    actualizarEstado('Filtros locales cargados');
+    mostrarAvisoFiltros('info', 'Filtros listos. Puedes escribir pueblo, macrotipo o macroactor manualmente; se autocompletan después de consultar resultados.');
+  }
 
-      const fila = Array.isArray(data) ? data[0] : data;
-      const opciones = fila?.opciones || fila || {};
+  // Llena un datalist para campos abiertos. No bloquea la escritura manual.
+  function llenarDatalist(id, valores) {
+    const lista = qs(id);
+    if (!lista) return;
+    const actuales = Array.from(lista.querySelectorAll('option')).map(opt => opt.value);
+    const combinados = Array.from(new Set([...(actuales || []), ...(valores || [])]
+      .map(v => String(v ?? '').trim())
+      .filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'es'));
+    lista.innerHTML = combinados.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+  }
 
-      llenarSelect('filtroAnioSIG', opciones.anios || [], 'Todos los años');
-      llenarSelect('filtroDepartamentoSIG', opciones.departamentos || [], 'Todos los departamentos');
-      llenarSelect('filtroPuebloSIG', opciones.pueblos || [], 'Todos los pueblos');
-      llenarSelect('filtroMacrotipoSIG', opciones.macrotipos || [], 'Todos los macrotipos');
-      llenarSelect('filtroMacroregionSIG', opciones.macroregiones || [], 'Todas las macroregiones');
-      llenarSelect('filtroMacroactorSIG', opciones.macroactores || [], 'Todos los macroactores');
-    } catch (error) {
-      console.error(error);
-      mostrarAvisoFiltros('warning', 'No se pudieron cargar las opciones de filtros. Revisa la función get_sig_opciones_filtros_2026().');
-    }
+  // Enriquecimiento de datalist con los valores que ya regresaron de una consulta.
+  function actualizarOpcionesDesdeRegistros(registros = []) {
+    const pueblos = [];
+    const macrotipos = [];
+    const macroactores = [];
+
+    (registros || []).forEach(registro => {
+      if (registro.macrotipo) macrotipos.push(registro.macrotipo);
+      if (registro.macroactor) macroactores.push(registro.macroactor);
+      String(registro.pueblo_texto || '').split('|').forEach(p => {
+        const limpio = p.trim();
+        if (limpio) pueblos.push(limpio);
+      });
+    });
+
+    llenarDatalist('listaPueblosSIG', pueblos);
+    llenarDatalist('listaMacrotiposSIG', macrotipos);
+    llenarDatalist('listaMacroactoresSIG', macroactores);
   }
 
   // Llena un select conservando una primera opción vacía.
@@ -518,9 +1316,506 @@
     qs('btnAplicarFiltrosSIG')?.addEventListener('click', aplicarFiltrosSIG);
     qs('btnLimpiarFiltrosSIG')?.addEventListener('click', limpiarFiltrosSIG);
     qs('btnLimpiarRegistros')?.addEventListener('click', limpiarRegistrosMapa);
+    qs('btnAplicarMapaCalorDeptSIG')?.addEventListener('click', () => aplicarMapaCalorDepartamentos());
+    qs('btnLimpiarMapaCalorDeptSIG')?.addEventListener('click', limpiarMapaCalorDepartamentos);
+    qs('heatDeptMetricaSIG')?.addEventListener('change', () => {
+      if (estadoMapaCalorDepto.activo) aplicarMapaCalorDepartamentos({ silencioso: true });
+    });
 
     ['sigMarkerRadio', 'sigMarkerColor', 'sigMarkerLinea', 'sigMarkerGrosor', 'sigMarkerOpacidad', 'sigMarkerOpacidadLinea']
       .forEach(id => qs(id)?.addEventListener('input', actualizarEstiloPuntosEnMapa));
+
+    qs('filtroPoblacionalSIG')?.addEventListener('change', () => {
+      // No aplica automáticamente para que el usuario pueda terminar de combinar filtros.
+      limpiarAvisoFiltros();
+    });
+  }
+
+
+  // ========================
+  // Consola avanzada SIG
+  // ========================
+
+  const historialConsola = [];
+
+  function abrirConsolaAvanzada() {
+    const panel = qs('panelConsolaSIG');
+    if (!panel) return;
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+    setTimeout(() => qs('consolaComandoSIG')?.focus(), 80);
+    window.SIG_STATE?.mapa?.invalidateSize();
+  }
+
+  function cerrarConsolaAvanzada() {
+    const panel = qs('panelConsolaSIG');
+    if (!panel) return;
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+    window.SIG_STATE?.mapa?.invalidateSize();
+  }
+
+  function setEstadoConsola(mensaje, tipo = 'secondary') {
+    const host = qs('estadoConsolaSIG');
+    if (!host) return;
+    host.className = `small text-${tipo}`;
+    host.textContent = mensaje;
+  }
+
+  function mostrarResumenConsola(html) {
+    const host = qs('consolaResumenSIG');
+    if (!host) return;
+    host.innerHTML = html;
+  }
+
+  function limpiarAyudaConsola() {
+    const host = qs('consolaAyudaSIG');
+    if (!host) return;
+    host.classList.add('d-none');
+    host.innerHTML = '';
+  }
+
+  function mostrarAyudaConsola() {
+    const host = qs('consolaAyudaSIG');
+    if (!host) return;
+    host.classList.remove('d-none');
+    host.innerHTML = `
+      <div class="alert alert-info py-2 mb-2">
+        <div class="fw-semibold mb-1">Comandos disponibles</div>
+        <div>Usa <code>buscar</code> y combina campos permitidos. La consola no ejecuta SQL libre: traduce el comando y filtra una cache autenticada segura.</div>
+      </div>
+      <div class="d-flex flex-column gap-1">
+        <div><code>buscar año:2024 departamento:Cauca pueblo:Nasa mujeres&gt;0</code></div>
+        <div><code>buscar macroregion:Pacífico macrotipo:Desplazamiento menores&gt;10</code></div>
+        <div><code>buscar texto:"confinamiento" departamento:Chocó</code></div>
+        <div><code>buscar municipio:Caloto personas&gt;100</code></div>
+        <div><code>calor casos</code> · <code>calor personas</code> · <code>limpiar calor</code></div>
+        <div><code>mostrar todos</code> · <code>limpiar mapa</code> · <code>limpiar</code> · <code>ayuda</code></div>
+      </div>`;
+    setEstadoConsola('Ayuda de comandos visible.', 'info');
+  }
+
+  function actualizarTablaConsola(registros = []) {
+    const tbody = qs('consolaTablaSIG');
+    const info = qs('consolaTablaInfoSIG');
+    if (!tbody) return;
+
+    if (!registros.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-secondary small">Sin resultados.</td></tr>';
+      if (info) info.textContent = 'Sin resultados';
+      return;
+    }
+
+    const limite = 60;
+    const filas = registros.slice(0, limite).map(registro => {
+      const lugares = normalizarArregloJsonb(registro.lugares);
+      const municipios = textoLista(lugares.map(lugar => lugar?.municipio).filter(Boolean), 2);
+      return `
+        <tr>
+          <td>${escapeHtml(registro.fecha_evento || '—')}</td>
+          <td>${escapeHtml(registro.departamento || textoLista(registro.departamentos, 1))}</td>
+          <td>${escapeHtml(municipios)}</td>
+          <td>${escapeHtml(textoLista(registro.pueblo, 2))}</td>
+          <td>${escapeHtml(registro.macrotipo || '—')}</td>
+          <td>${escapeHtml(formatearNumero(registro.npersonas || 0))}</td>
+          <td>${escapeHtml(recortarTexto(registro.detalle || registro.contextual_info || registro.fuente || '—', 120))}</td>
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = filas;
+    if (info) info.textContent = registros.length > limite
+      ? `Mostrando ${limite} de ${formatearNumero(registros.length)}`
+      : `${formatearNumero(registros.length)} registros`;
+  }
+
+  async function obtenerSesionConsola() {
+    const cliente = window.SIG_STATE?.supabaseClient;
+    if (!cliente?.auth) return null;
+    const { data } = await cliente.auth.getSession();
+    return data?.session || null;
+  }
+
+  async function actualizarEstadoSesionConsola() {
+    const sesion = await obtenerSesionConsola();
+    const badge = qs('badgeSesionConsolaSIG');
+    const email = qs('consolaEmailSIG');
+    const password = qs('consolaPasswordSIG');
+    const btnLogin = qs('btnLoginConsolaSIG');
+    const btnLogout = qs('btnLogoutConsolaSIG');
+
+    if (sesion?.user) {
+      if (badge) badge.innerHTML = `<i class="bi bi-unlock"></i>${escapeHtml(sesion.user.email || 'Sesión activa')}`;
+      if (email) {
+        email.value = sesion.user.email || '';
+        email.disabled = true;
+      }
+      if (password) {
+        password.value = '';
+        password.disabled = true;
+      }
+      if (btnLogin) btnLogin.disabled = true;
+      if (btnLogout) btnLogout.disabled = false;
+      setEstadoConsola('Sesión iniciada. Puedes ejecutar consultas avanzadas.', 'info');
+    } else {
+      if (badge) badge.innerHTML = '<i class="bi bi-lock"></i>Sin sesión';
+      if (email) email.disabled = false;
+      if (password) password.disabled = false;
+      if (btnLogin) btnLogin.disabled = false;
+      if (btnLogout) btnLogout.disabled = true;
+      setEstadoConsola('Requiere iniciar sesión para consultar datos adicionales de casos_2026.', 'secondary');
+    }
+  }
+
+  async function iniciarSesionConsola() {
+    const cliente = window.SIG_STATE?.supabaseClient;
+    if (!cliente?.auth) {
+      setEstadoConsola('No hay cliente Supabase disponible.', 'danger');
+      return;
+    }
+
+    const email = String(qs('consolaEmailSIG')?.value || '').trim();
+    const password = String(qs('consolaPasswordSIG')?.value || '');
+    if (!email || !password) {
+      setEstadoConsola('Escribe usuario/correo y contraseña.', 'warning');
+      return;
+    }
+
+    const boton = qs('btnLoginConsolaSIG');
+    const htmlOriginal = boton?.innerHTML || '';
+    try {
+      if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Ingresando...';
+      }
+      const { error } = await cliente.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await actualizarEstadoSesionConsola();
+      setEstadoConsola('Sesión iniciada correctamente.', 'info');
+    } catch (error) {
+      console.error(error);
+      setEstadoConsola(error?.message || 'No fue posible iniciar sesión.', 'danger');
+    } finally {
+      if (boton) boton.innerHTML = htmlOriginal;
+      await actualizarEstadoSesionConsola();
+    }
+  }
+
+  async function cerrarSesionConsola() {
+    const cliente = window.SIG_STATE?.supabaseClient;
+    if (!cliente?.auth) return;
+    try {
+      await cliente.auth.signOut();
+      setEstadoConsola('Sesión cerrada.', 'secondary');
+    } catch (error) {
+      console.error(error);
+      setEstadoConsola(error?.message || 'No fue posible cerrar sesión.', 'danger');
+    } finally {
+      await actualizarEstadoSesionConsola();
+    }
+  }
+
+  function quitarComillas(valor) {
+    const texto = String(valor ?? '').trim();
+    if ((texto.startsWith('"') && texto.endsWith('"')) || (texto.startsWith("'") && texto.endsWith("'"))) {
+      return texto.slice(1, -1);
+    }
+    return texto;
+  }
+
+  function nombreCampoConsola(campo) {
+    const normalizado = normTxt(campo).replace(/[^a-z0-9_]/g, '');
+    const mapa = {
+      ano: 'anio', anio: 'anio', año: 'anio',
+      departamento: 'departamento', depto: 'departamento',
+      municipio: 'municipio', lugar: 'municipio',
+      pueblo: 'pueblo', pueblos: 'pueblo',
+      macrotipo: 'macrotipo', tipo: 'macrotipo',
+      macroregion: 'macroregion', region: 'macroregion', macroregión: 'macroregion',
+      macroactor: 'macroactor', actor: 'macroactor',
+      poblacional: 'poblacional', categoria: 'poblacional', categoría: 'poblacional',
+      texto: 'texto', buscar: 'texto', palabra: 'texto',
+      personas: 'personas', persona: 'personas', victimas: 'personas', víctimas: 'personas',
+      mujeres: 'mujeres', mujer: 'mujeres',
+      hombres: 'hombres', hombre: 'hombres',
+      menores: 'menores', menor: 'menores'
+    };
+    return mapa[normalizado] || null;
+  }
+
+  function aplicarRangoNumerico(params, campo, operador, valor) {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) throw new Error(`El valor de ${campo} debe ser numérico.`);
+    const n = Math.trunc(numero);
+    const minKey = `p_min_${campo}`;
+    const maxKey = `p_max_${campo}`;
+
+    if (operador === '>' ) params[minKey] = Math.max(params[minKey] ?? -Infinity, n + 1);
+    else if (operador === '>=') params[minKey] = Math.max(params[minKey] ?? -Infinity, n);
+    else if (operador === '<') params[maxKey] = Math.min(params[maxKey] ?? Infinity, n - 1);
+    else if (operador === '<=') params[maxKey] = Math.min(params[maxKey] ?? Infinity, n);
+    else {
+      params[minKey] = n;
+      params[maxKey] = n;
+    }
+
+    if (params[minKey] === -Infinity) params[minKey] = null;
+    if (params[maxKey] === Infinity) params[maxKey] = null;
+  }
+
+  function parsearComandoConsola(entrada) {
+    const original = String(entrada || '').trim();
+    if (!original) throw new Error('Escribe un comando. Ejemplo: buscar año:2024 mujeres>0');
+
+    const bajo = normTxt(original);
+    if (bajo === 'ayuda' || bajo === 'help' || bajo === '?') return { tipo: 'ayuda' };
+    if (bajo === 'limpiar') return { tipo: 'limpiar' };
+    if (bajo === 'limpiar mapa') return { tipo: 'limpiar_mapa' };
+    if (bajo === 'limpiar calor' || bajo === 'limpiar mapa calor' || bajo === 'limpiar mapa de calor') return { tipo: 'limpiar_calor' };
+    if (bajo === 'calor casos' || bajo === 'mapa calor casos' || bajo === 'mapa de calor casos') return { tipo: 'calor', metrica: 'casos' };
+    if (bajo === 'calor personas' || bajo === 'mapa calor personas' || bajo === 'mapa de calor personas') return { tipo: 'calor', metrica: 'personas' };
+    if (bajo === 'mostrar todos' || bajo === 'mostrar todo' || bajo === 'todos') {
+      return { tipo: 'buscar', params: crearParametrosConsola(), descripcion: ['Todos los registros avanzados'] };
+    }
+
+    let cuerpo = original;
+    if (/^buscar\b/i.test(cuerpo)) cuerpo = cuerpo.replace(/^buscar\b/i, '').trim();
+
+    const params = crearParametrosConsola();
+    const descripcion = [];
+    const usados = [];
+    const patron = /([a-zA-ZáéíóúÁÉÍÓÚüÜñÑ_]+)\s*(>=|<=|>|<|=|:)\s*("[^"]*"|'[^']*'|[^\s]+)/g;
+    let match;
+
+    while ((match = patron.exec(cuerpo)) !== null) {
+      const campo = nombreCampoConsola(match[1]);
+      const operador = match[2];
+      const valor = quitarComillas(match[3]);
+      usados.push(match[0]);
+
+      if (!campo) throw new Error(`Campo no permitido: ${match[1]}. Usa ayuda para ver campos disponibles.`);
+
+      if (campo === 'anio') {
+        const n = Number(valor);
+        if (!Number.isFinite(n)) throw new Error('El año debe ser numérico.');
+        if (operador === '>' ) { params.p_anio_inicio = Math.trunc(n) + 1; descripcion.push(`Año > ${Math.trunc(n)}`); }
+        else if (operador === '>=') { params.p_anio_inicio = Math.trunc(n); descripcion.push(`Año ≥ ${Math.trunc(n)}`); }
+        else if (operador === '<') { params.p_anio_fin = Math.trunc(n) - 1; descripcion.push(`Año < ${Math.trunc(n)}`); }
+        else if (operador === '<=') { params.p_anio_fin = Math.trunc(n); descripcion.push(`Año ≤ ${Math.trunc(n)}`); }
+        else { params.p_anio = Math.trunc(n); descripcion.push(`Año ${Math.trunc(n)}`); }
+        continue;
+      }
+
+      if (['personas', 'mujeres', 'hombres', 'menores'].includes(campo)) {
+        aplicarRangoNumerico(params, campo, operador, valor);
+        const simbolo = operador === ':' ? '=' : operador;
+        descripcion.push(`${campo.charAt(0).toUpperCase() + campo.slice(1)} ${simbolo} ${valor}`);
+        continue;
+      }
+
+      if (operador !== ':' && operador !== '=') {
+        throw new Error(`El campo ${campo} solo admite : o =.`);
+      }
+
+      if (campo === 'departamento') params.p_departamento = valor;
+      if (campo === 'municipio') params.p_municipio = valor;
+      if (campo === 'pueblo') params.p_pueblo = valor;
+      if (campo === 'macrotipo') params.p_macrotipo = valor;
+      if (campo === 'macroregion') params.p_macroregion = valor;
+      if (campo === 'macroactor') params.p_macroactor = valor;
+      if (campo === 'poblacional') params.p_poblacional = valor;
+      if (campo === 'texto') params.p_texto = valor;
+
+      descripcion.push(`${campo.charAt(0).toUpperCase() + campo.slice(1)}: ${valor}`);
+    }
+
+    if (!descripcion.length) {
+      const textoLibre = cuerpo.trim();
+      if (textoLibre) {
+        params.p_texto = textoLibre;
+        descripcion.push(`Texto: ${textoLibre}`);
+      } else {
+        descripcion.push('Todos los registros avanzados');
+      }
+    }
+
+    return { tipo: 'buscar', params, descripcion };
+  }
+
+  function crearParametrosConsola() {
+    return {
+      p_anio: null,
+      p_anio_inicio: null,
+      p_anio_fin: null,
+      p_departamento: null,
+      p_municipio: null,
+      p_pueblo: null,
+      p_macrotipo: null,
+      p_macroregion: null,
+      p_macroactor: null,
+      p_poblacional: null,
+      p_texto: null,
+      p_min_personas: null,
+      p_max_personas: null,
+      p_min_mujeres: null,
+      p_max_mujeres: null,
+      p_min_hombres: null,
+      p_max_hombres: null,
+      p_min_menores: null,
+      p_max_menores: null
+    };
+  }
+
+  function normalizarParametrosRpc(params) {
+    const limpio = {};
+    Object.entries(params || {}).forEach(([clave, valor]) => {
+      if (valor === undefined || valor === -Infinity || valor === Infinity) limpio[clave] = null;
+      else if (typeof valor === 'string') limpio[clave] = valor.trim() || null;
+      else limpio[clave] = valor;
+    });
+    return limpio;
+  }
+
+  function guardarHistorialConsola(comando) {
+    const texto = String(comando || '').trim();
+    if (!texto) return;
+    const existente = historialConsola.indexOf(texto);
+    if (existente >= 0) historialConsola.splice(existente, 1);
+    historialConsola.unshift(texto);
+    historialConsola.splice(12);
+
+    const select = qs('consolaHistorialSIG');
+    if (!select) return;
+    select.innerHTML = '<option value="">Historial</option>';
+    historialConsola.forEach(item => select.appendChild(new Option(item, item)));
+  }
+
+  function resumenHtmlConsola({ registros = 0, casosConCoordenadas = 0, puntos = 0, personas = 0, mujeres = 0, hombres = 0, menores = 0, descripcion = [] } = {}) {
+    const textoConsulta = descripcion.length ? descripcion.join(' · ') : 'Todos los registros avanzados';
+    return `
+      <div class="fw-semibold mb-2"><i class="bi bi-activity me-1"></i>Resultado</div>
+      <div class="small mb-2">Consulta: <code>${escapeHtml(textoConsulta)}</code></div>
+      <div class="row g-2 small">
+        <div class="col-6">Registros: <strong>${formatearNumero(registros)}</strong></div>
+        <div class="col-6">Casos coord.: <strong>${formatearNumero(casosConCoordenadas)}</strong></div>
+        <div class="col-6">Puntos mapa: <strong>${formatearNumero(puntos)}</strong></div>
+        <div class="col-6">Personas: <strong>${formatearNumero(personas)}</strong></div>
+        <div class="col-6">Mujeres: <strong>${formatearNumero(mujeres)}</strong></div>
+        <div class="col-6">Hombres: <strong>${formatearNumero(hombres)}</strong></div>
+        <div class="col-6">Menores: <strong>${formatearNumero(menores)}</strong></div>
+      </div>`;
+  }
+
+  async function ejecutarComandoConsola() {
+    const comandoEl = qs('consolaComandoSIG');
+    const boton = qs('btnEjecutarConsolaSIG');
+    const htmlOriginal = boton?.innerHTML || '';
+    const comando = comandoEl?.value || '';
+
+    try {
+      limpiarAyudaConsola();
+      const parsed = parsearComandoConsola(comando);
+
+      if (parsed.tipo === 'ayuda') {
+        mostrarAyudaConsola();
+        return;
+      }
+      if (parsed.tipo === 'limpiar') {
+        if (comandoEl) comandoEl.value = '';
+        actualizarTablaConsola([]);
+        mostrarResumenConsola('<div class="fw-semibold mb-2"><i class="bi bi-activity me-1"></i>Resultado</div><div class="text-secondary small">Comando y resultados limpiados.</div>');
+        setEstadoConsola('Comando limpiado.', 'secondary');
+        return;
+      }
+      if (parsed.tipo === 'limpiar_mapa') {
+        limpiarRegistrosMapa();
+        setEstadoConsola('Mapa limpiado desde consola.', 'secondary');
+        return;
+      }
+      if (parsed.tipo === 'limpiar_calor') {
+        limpiarMapaCalorDepartamentos();
+        setEstadoConsola('Mapa de calor departamental limpiado.', 'secondary');
+        return;
+      }
+      if (parsed.tipo === 'calor') {
+        await aplicarMapaCalorDepartamentos({ metrica: parsed.metrica });
+        setEstadoConsola(`Mapa de calor aplicado por ${parsed.metrica}.`, 'info');
+        return;
+      }
+
+      const sesion = await obtenerSesionConsola();
+      if (!sesion?.user) {
+        abrirConsolaAvanzada();
+        setEstadoConsola('Inicia sesión antes de ejecutar consultas avanzadas.', 'warning');
+        return;
+      }
+
+      if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Run...';
+      }
+
+      const parametros = normalizarParametrosRpc(parsed.params);
+      setEstadoConsola('Consultando tablas ligeras avanzadas...', 'info');
+
+      const registros = await consultarCasosAvanzadosFiltrados(parametros);
+      window.SIG_STATE.casosConsultados = registros;
+      const resumenMapa = pintarRegistrosEnMapa(registros);
+      const poblacion = calcularTotalesPoblacion(registros);
+      const resumen = { ...resumenMapa, ...poblacion, descripcion: parsed.descripcion };
+
+      actualizarEstadisticasFiltros({ ...resumenMapa, ...poblacion });
+      if (estadoMapaCalorDepto.activo) refrescarMapaCalorDepartamentos({ silencioso: false });
+      mostrarResumenConsola(resumenHtmlConsola(resumen));
+      actualizarTablaConsola(registros);
+      guardarHistorialConsola(comando);
+
+      if (resumenMapa.puntos) setEstadoConsola(`${formatearNumero(resumenMapa.puntos)} puntos pintados desde consola.`, 'info');
+      else setEstadoConsola(`${formatearNumero(registros.length)} registros encontrados, sin coordenadas válidas.`, 'warning');
+      actualizarEstado(`Consola: ${formatearNumero(registros.length)} registros`);
+    } catch (error) {
+      console.error(error);
+      const mensaje = error?.message || 'No fue posible ejecutar el comando.';
+      const ayuda = mensaje.includes('Could not find the function') || mensaje.includes('PGRST202')
+        ? ' Ejecuta el SQL 10 de tablas ligeras SIG en Supabase y recarga con Ctrl+F5.'
+        : '';
+      setEstadoConsola(`${mensaje}${ayuda}`, 'danger');
+      mostrarResumenConsola(`<div class="fw-semibold mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Error</div><div class="small text-danger">${escapeHtml(mensaje + ayuda)}</div>`);
+    } finally {
+      if (boton) {
+        boton.disabled = false;
+        boton.innerHTML = htmlOriginal;
+      }
+    }
+  }
+
+  function vincularConsolaAvanzada() {
+    qs('btnAbrirConsolaSIG')?.addEventListener('click', abrirConsolaAvanzada);
+    qs('btnCerrarConsolaSIG')?.addEventListener('click', cerrarConsolaAvanzada);
+    qs('btnLoginConsolaSIG')?.addEventListener('click', iniciarSesionConsola);
+    qs('btnLogoutConsolaSIG')?.addEventListener('click', cerrarSesionConsola);
+    qs('btnEjecutarConsolaSIG')?.addEventListener('click', ejecutarComandoConsola);
+    qs('btnLimpiarComandoSIG')?.addEventListener('click', () => {
+      const cmd = qs('consolaComandoSIG');
+      if (cmd) cmd.value = '';
+      limpiarAyudaConsola();
+      setEstadoConsola('Comando limpiado.', 'secondary');
+    });
+    qs('btnLimpiarMapaConsolaSIG')?.addEventListener('click', limpiarRegistrosMapa);
+    qs('btnAyudaConsolaSIG')?.addEventListener('click', mostrarAyudaConsola);
+    qs('consolaHistorialSIG')?.addEventListener('change', event => {
+      const valor = event.target.value;
+      if (valor && qs('consolaComandoSIG')) qs('consolaComandoSIG').value = valor;
+      event.target.value = '';
+    });
+    qs('consolaComandoSIG')?.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') ejecutarComandoConsola();
+    });
+
+    const cliente = window.SIG_STATE?.supabaseClient;
+    if (cliente?.auth) {
+      cliente.auth.onAuthStateChange(() => actualizarEstadoSesionConsola());
+      actualizarEstadoSesionConsola();
+    }
   }
 
   // Inicializa valores visuales de controles de circleMarker desde configlayers.js.
@@ -555,9 +1850,18 @@
 
     inicializarControlesVisuales();
     actualizarTextoFiltrosActivos(filtrosActivos);
-    actualizarEstadisticasFiltros({ registros: 0, casosConCoordenadas: 0, puntos: 0 });
+    actualizarEstadisticasFiltros({
+      registros: 0,
+      casosConCoordenadas: 0,
+      puntos: 0,
+      personas: 0,
+      mujeres: 0,
+      hombres: 0,
+      menores: 0
+    });
     vincularPanelFiltros();
-    await cargarOpcionesFiltros();
+    vincularConsolaAvanzada();
+    cargarOpcionesFiltros();
   }
 
   // API global mínima para que sigindex.html pueda inicializar el módulo.
@@ -567,6 +1871,14 @@
     aplicarFiltrosSIG,
     limpiarFiltrosSIG,
     limpiarRegistrosMapa,
-    pintarRegistrosEnMapa
+    abrirConsolaAvanzada,
+    cerrarConsolaAvanzada,
+    ejecutarComandoConsola,
+    pintarRegistrosEnMapa,
+    aplicarMapaCalorDepartamentos,
+    limpiarMapaCalorDepartamentos,
+    refrescarMapaCalorDepartamentos,
+    obtenerEstiloDepartamentoCalor,
+    crearPopupDepartamentoCalor
   };
 })();

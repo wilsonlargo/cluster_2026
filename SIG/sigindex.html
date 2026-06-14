@@ -234,6 +234,149 @@
       line-height: 1.35;
     }
 
+
+    /* Consola avanzada territorial: panel inferior oscuro para consultas autenticadas. */
+    .sig-console-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1045;
+      height: min(46vh, 430px);
+      min-height: 300px;
+      background: #111827;
+      color: #e5e7eb;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      box-shadow: 0 -18px 45px rgba(15, 23, 42, .45);
+      transform: translateY(105%);
+      transition: transform .24s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sig-console-panel.open {
+      transform: translateY(0);
+    }
+
+    .sig-console-header {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      padding: .65rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, .10);
+      background: #0b1220;
+    }
+
+    .sig-console-body {
+      flex: 1;
+      overflow: auto;
+      padding: .85rem 1rem 1rem;
+    }
+
+    .sig-console-panel .form-control,
+    .sig-console-panel .form-select {
+      background: #0f172a;
+      color: #f8fafc;
+      border-color: rgba(255, 255, 255, .28);
+    }
+
+    .sig-console-panel .form-control:focus,
+    .sig-console-panel .form-select:focus {
+      background: #0f172a;
+      color: #fff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 .2rem rgba(56, 189, 248, .16);
+    }
+
+    .sig-console-panel .form-control::placeholder {
+      color: #94a3b8;
+    }
+
+    .sig-console-command {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      min-height: 58px;
+      resize: vertical;
+    }
+
+    .sig-console-card {
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: .85rem;
+      background: rgba(15, 23, 42, .74);
+      padding: .75rem;
+    }
+
+    .sig-console-help code,
+    .sig-console-summary code {
+      color: #67e8f9;
+      background: rgba(8, 47, 73, .75);
+      border-radius: .35rem;
+      padding: .12rem .3rem;
+    }
+
+    .sig-console-table-wrap {
+      max-height: 155px;
+      overflow: auto;
+      border-radius: .75rem;
+      border: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    .sig-console-panel table {
+      --bs-table-bg: transparent;
+      --bs-table-color: #e5e7eb;
+      --bs-table-border-color: rgba(255, 255, 255, .12);
+      margin-bottom: 0;
+    }
+
+    .sig-console-panel thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #0b1220;
+      color: #f8fafc;
+    }
+
+    .sig-console-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 999px;
+      padding: .22rem .55rem;
+      background: rgba(255, 255, 255, .06);
+      font-size: .78rem;
+    }
+
+    .heat-legend {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: .35rem;
+      align-items: end;
+    }
+
+    .heat-legend-item {
+      min-height: 34px;
+      border-radius: .45rem;
+      border: 1px solid rgba(15, 23, 42, .10);
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      padding: .25rem;
+      font-size: .68rem;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    .heat-status {
+      border-radius: .85rem;
+      background: #f8fafc;
+      border: 1px solid rgba(15, 23, 42, .10);
+      padding: .6rem .7rem;
+      font-size: .8rem;
+      color: var(--sig-muted);
+    }
+
     @media (max-width: 576px) {
       :root {
         --topbar-h: 58px;
@@ -284,6 +427,12 @@
             <button class="nav-link btn btn-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#panelFiltros"
               aria-controls="panelFiltros">
               <i class="bi bi-funnel me-1"></i>Filtros
+            </button>
+          </li>
+
+          <li class="nav-item">
+            <button id="btnAbrirConsolaSIG" class="nav-link btn btn-link" type="button">
+              <i class="bi bi-terminal me-1"></i>Consola
             </button>
           </li>
         </ul>
@@ -373,11 +522,52 @@
         <div class="row g-2">
           <div class="col-6"><label class="form-label small fw-semibold" for="filtroAnioSIG">Año</label><select id="filtroAnioSIG" class="form-select form-select-sm"><option value="">Todos los años</option></select></div>
           <div class="col-6"><label class="form-label small fw-semibold" for="filtroDepartamentoSIG">Departamento</label><select id="filtroDepartamentoSIG" class="form-select form-select-sm"><option value="">Todos los departamentos</option></select></div>
-          <div class="col-6"><label class="form-label small fw-semibold" for="filtroPuebloSIG">Pueblo</label><select id="filtroPuebloSIG" class="form-select form-select-sm"><option value="">Todos los pueblos</option></select></div>
-          <div class="col-6"><label class="form-label small fw-semibold" for="filtroMacrotipoSIG">Macrotipo</label><select id="filtroMacrotipoSIG" class="form-select form-select-sm"><option value="">Todos los macrotipos</option></select></div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold" for="filtroPuebloSIG">Pueblo</label>
+            <input id="filtroPuebloSIG" class="form-control form-control-sm" list="listaPueblosSIG" placeholder="Todos los pueblos">
+            <datalist id="listaPueblosSIG"></datalist>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold" for="filtroMacrotipoSIG">Macrotipo</label>
+            <input id="filtroMacrotipoSIG" class="form-control form-control-sm" list="listaMacrotiposSIG" placeholder="Todos los macrotipos">
+            <datalist id="listaMacrotiposSIG"></datalist>
+          </div>
           <div class="col-6"><label class="form-label small fw-semibold" for="filtroMacroregionSIG">Macroregión</label><select id="filtroMacroregionSIG" class="form-select form-select-sm"><option value="">Todas las macroregiones</option></select></div>
-          <div class="col-6"><label class="form-label small fw-semibold" for="filtroMacroactorSIG">Macroactor</label><select id="filtroMacroactorSIG" class="form-select form-select-sm"><option value="">Todos los macroactores</option></select></div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold" for="filtroMacroactorSIG">Macroactor</label>
+            <input id="filtroMacroactorSIG" class="form-control form-control-sm" list="listaMacroactoresSIG" placeholder="Todos los macroactores">
+            <datalist id="listaMacroactoresSIG"></datalist>
+          </div>
         </div>
+      </section>
+
+      <section class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-gender-ambiguous"></i>Filtro poblacional</div>
+        <div class="sig-help mb-2">Selecciona una categoría poblacional para combinarla con año, departamento, pueblo, macrotipo, macroregión y macroactor. La opción filtra casos con dato mayor a cero.</div>
+        <label class="form-label small fw-semibold" for="filtroPoblacionalSIG">Categoría poblacional</label>
+        <select id="filtroPoblacionalSIG" class="form-select form-select-sm">
+          <option value="">Todas las categorías</option>
+          <option value="personas">Personas registradas</option>
+          <option value="mujeres">Mujeres registradas</option>
+          <option value="hombres">Hombres registrados</option>
+          <option value="menores">Menores registrados</option>
+        </select>
+      </section>
+
+      <section class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-fire"></i>Mapa de calor departamental</div>
+        <div class="sig-help mb-2">Usa la capa <strong>Departamentos</strong> y cruza los resultados vigentes del filtro o de la consola con la variable <code>DPTO_CNMBR</code>.</div>
+        <label class="form-label small fw-semibold" for="heatDeptMetricaSIG">Variable de intensidad</label>
+        <select id="heatDeptMetricaSIG" class="form-select form-select-sm mb-2">
+          <option value="casos">Número de casos</option>
+          <option value="personas">Número de personas</option>
+        </select>
+        <div class="d-grid gap-2 mb-2">
+          <button id="btnAplicarMapaCalorDeptSIG" type="button" class="btn btn-warning btn-sm"><i class="bi bi-fire me-1"></i>Aplicar mapa de calor</button>
+          <button id="btnLimpiarMapaCalorDeptSIG" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle me-1"></i>Limpiar mapa de calor</button>
+        </div>
+        <div id="heatDeptEstadoSIG" class="heat-status mb-2">Mapa de calor inactivo. Ejecuta un filtro o comando y luego aplica la intensidad departamental.</div>
+        <div id="heatDeptLeyendaSIG" class="heat-legend d-none" aria-label="Leyenda del mapa de calor departamental"></div>
       </section>
 
       <div class="d-grid gap-2 mb-3">
@@ -393,6 +583,16 @@
         <div class="col-4"><div class="filter-stat"><div id="statPuntos" class="number">0</div><div class="label">Puntos en mapa</div></div></div>
       </div>
 
+      <div class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-people"></i>Población incluida en el filtro</div>
+        <div class="row g-2">
+          <div class="col-6"><div class="filter-stat"><div id="statPersonas" class="number">0</div><div class="label">Personas</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statMujeres" class="number">0</div><div class="label">Mujeres</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statHombres" class="number">0</div><div class="label">Hombres</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statMenores" class="number">0</div><div class="label">Menores</div></div></div>
+        </div>
+      </div>
+
       <div class="alert alert-light border small mb-0">
         <div class="fw-semibold mb-1"><i class="bi bi-shield-check me-1"></i>Consulta pública controlada</div>
         <div class="text-muted">Este panel llama funciones RPC del SIG. El número de registros vinculados incluye casos que cumplen el filtro aunque no tengan coordenadas para pintar.</div>
@@ -405,6 +605,96 @@
     <div id="mapaSIG" aria-label="Mapa SIG del Observatorio"></div>
   </main>
 
+  <!-- Consola avanzada: consultas autenticadas de línea de comando. -->
+  <section id="panelConsolaSIG" class="sig-console-panel" aria-label="Consola avanzada SIG" aria-hidden="true">
+    <div class="sig-console-header">
+      <div>
+        <div class="fw-bold"><i class="bi bi-terminal me-2"></i>Consola avanzada territorial</div>
+        <div id="estadoConsolaSIG" class="small text-secondary">Requiere iniciar sesión para consultar datos adicionales de casos_2026.</div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span id="badgeSesionConsolaSIG" class="sig-console-badge"><i class="bi bi-lock"></i>Sin sesión</span>
+        <button id="btnCerrarConsolaSIG" type="button" class="btn btn-outline-light btn-sm"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+
+    <div class="sig-console-body">
+      <div class="row g-3">
+        <div class="col-12 col-lg-3">
+          <div class="sig-console-card h-100">
+            <div class="fw-semibold mb-2"><i class="bi bi-shield-lock me-1"></i>Acceso avanzado</div>
+            <div class="mb-2">
+              <label for="consolaEmailSIG" class="form-label small mb-1">Usuario / correo</label>
+              <input id="consolaEmailSIG" type="email" class="form-control form-control-sm" autocomplete="username" placeholder="usuario@correo.com">
+            </div>
+            <div class="mb-2">
+              <label for="consolaPasswordSIG" class="form-label small mb-1">Contraseña</label>
+              <input id="consolaPasswordSIG" type="password" class="form-control form-control-sm" autocomplete="current-password" placeholder="Contraseña">
+            </div>
+            <div class="d-grid gap-2">
+              <button id="btnLoginConsolaSIG" type="button" class="btn btn-info btn-sm"><i class="bi bi-box-arrow-in-right me-1"></i>Iniciar sesión</button>
+              <button id="btnLogoutConsolaSIG" type="button" class="btn btn-outline-light btn-sm" disabled><i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <div class="sig-console-card h-100">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <label for="consolaComandoSIG" class="form-label fw-semibold mb-0"><i class="bi bi-code-slash me-1"></i>Comando</label>
+              <select id="consolaHistorialSIG" class="form-select form-select-sm w-auto" title="Historial de comandos">
+                <option value="">Historial</option>
+              </select>
+            </div>
+            <textarea id="consolaComandoSIG" class="form-control sig-console-command" spellcheck="false" placeholder='buscar año:2024 departamento:Cauca pueblo:Nasa mujeres>0 texto:"confinamiento"'></textarea>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <button id="btnEjecutarConsolaSIG" type="button" class="btn btn-success btn-sm"><i class="bi bi-play-fill me-1"></i>Run</button>
+              <button id="btnLimpiarComandoSIG" type="button" class="btn btn-outline-light btn-sm"><i class="bi bi-eraser me-1"></i>Limpiar comando</button>
+              <button id="btnLimpiarMapaConsolaSIG" type="button" class="btn btn-outline-light btn-sm"><i class="bi bi-map me-1"></i>Limpiar mapa</button>
+              <button id="btnAyudaConsolaSIG" type="button" class="btn btn-outline-info btn-sm"><i class="bi bi-question-circle me-1"></i>Ayuda</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="sig-console-card h-100 sig-console-summary" id="consolaResumenSIG">
+            <div class="fw-semibold mb-2"><i class="bi bi-activity me-1"></i>Resultado</div>
+            <div class="text-secondary small">Ejecuta un comando para ver registros, población y puntos en el mapa.</div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="sig-console-card">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <div class="fw-semibold"><i class="bi bi-table me-1"></i>Vista rápida de resultados</div>
+              <div class="small text-secondary" id="consolaTablaInfoSIG">Sin resultados</div>
+            </div>
+            <div id="consolaAyudaSIG" class="sig-console-help small mb-2 d-none"></div>
+            <div class="sig-console-table-wrap">
+              <table class="table table-sm table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Depto.</th>
+                    <th>Municipio</th>
+                    <th>Pueblo</th>
+                    <th>Macrotipo</th>
+                    <th>Personas</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="consolaTablaSIG">
+                  <tr><td colspan="7" class="text-secondary small">Sin resultados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
   <!-- Bootstrap JS: activa offcanvas, dropdowns y collapse. -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -416,10 +706,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Configuración externa de capas, panes, colores, Supabase y estilo de casos. -->
-  <script src="./configlayers.js"></script>
+  <script src="./configlayers.js?v=20260614-noinit11"></script>
 
   <!-- Lógica externa de filtros, consultas a Supabase y puntos de casos. -->
-  <script src="./datasig.js"></script>
+  <script src="./datasig.js?v=20260614-noinit11"></script>
 
   <script>
     // Estado interno del SIG compartido con datasig.js.
@@ -430,7 +720,8 @@
       capasPorId: new Map(),
       geojsonPorId: new Map(),
       cargandoPorId: new Set(),
-      casosConsultados: []
+      casosConsultados: [],
+      mapaCalorDepartamentos: null
     };
 
     // Atajo para obtener elementos del DOM por id.
@@ -443,6 +734,21 @@
       return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[caracter]));
+    }
+
+    // Normaliza texto localmente para cruces entre GeoJSON y registros.
+    function normTxtLocal(valor) {
+      return String(valor ?? '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    // Obtiene el nombre de departamento desde el GeoJSON. DPTO_CNMBR es la variable principal.
+    function obtenerNombreDepartamentoFeature(feature) {
+      const props = feature?.properties || {};
+      return props.DPTO_CNMBR || props.DEPARTAMEN || props.DEPTO || props.NOMBRE_DPT || props.NOMBRE || props.nombre || '';
     }
 
     // Muestra avisos en el panel de capas.
@@ -483,6 +789,9 @@
 
     // Crea contenido de popup básico para atributos de GeoJSON.
     function crearPopupDesdePropiedades(feature, nombreCapa) {
+      const popupDepartamento = window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, nombreCapa);
+      if (popupDepartamento) return popupDepartamento;
+
       const props = feature?.properties || {};
       const filas = Object.entries(props).slice(0, 8).map(([clave, valor]) => {
         return `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`;
@@ -496,9 +805,16 @@
       const estilo = obtenerEstiloCapa(capaConfig);
       return L.geoJSON(geojson, {
         pane: capaConfig.pane,
-        style: () => estilo,
+        style: feature => window.SIG_DATOS?.obtenerEstiloDepartamentoCalor?.(feature, capaConfig, estilo) || estilo,
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, { ...estilo, radius: Math.max(4, Number(capaConfig.grosorLinea) + 3) }),
-        onEachFeature: (feature, layer) => layer.bindPopup(crearPopupDesdePropiedades(feature, capaConfig.nombre))
+        onEachFeature: (feature, layer) => {
+          layer._sigCapaId = capaConfig.id;
+          layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre));
+          if (capaConfig.id === 'departamentos') {
+            layer.on('mouseover', () => layer.setStyle({ weight: Math.max(2, Number(capaConfig.grosorLinea || 1) + 1) }));
+            layer.on('mouseout', () => window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true }));
+          }
+        }
       });
     }
 
@@ -542,6 +858,9 @@
       SIG_STATE.capasPorId.set(capaConfig.id, capaLeaflet);
       capaConfig.activa = true;
       actualizarColorIndicador(capaConfig);
+      if (capaConfig.id === 'departamentos') {
+        window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
+      }
       actualizarEstado(`${capaConfig.nombre} activa`);
     }
 
@@ -577,8 +896,27 @@
           }
         });
       }
+      if (capaConfig.id === 'departamentos') {
+        window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
+      }
       actualizarColorIndicador(capaConfig);
     }
+
+    // Activa una capa por id desde módulos externos como datasig.js.
+    async function activarCapaPorId(id) {
+      const capaConfig = SIG_CONFIG.capas.find(capa => capa.id === id);
+      if (!capaConfig) return null;
+      const check = qs(`check-${id}`);
+      if (check) check.checked = true;
+      await activarCapa(capaConfig);
+      return SIG_STATE.capasPorId.get(id) || null;
+    }
+
+    window.SIG_CAPAS = {
+      activarCapaPorId,
+      obtenerNombreDepartamentoFeature,
+      normTxtLocal
+    };
 
     // Actualiza el punto de color visible en la fila de la capa.
     function actualizarColorIndicador(capaConfig) {

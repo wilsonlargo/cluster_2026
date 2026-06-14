@@ -27,8 +27,19 @@ window.SIG_CONFIG = {
   supabase: {
     url: 'https://sjvuxlcgeswapbphsqkv.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE',
-    rpcCasosMapaFiltrado: 'get_sig_casos_mapa_filtrado_2026',
-    rpcOpcionesFiltros: 'get_sig_opciones_filtros_2026'
+    // Desde la versión SQL 10, el SIG consulta tablas físicas ligeras.
+    // Los puntos están separados para evitar traer JSON pesado en cada consulta.
+    tablaCasosLite: 'sig_casos_lite_2026',
+    tablaPuntosLite: 'sig_puntos_lite_2026',
+    tablaCasosDetalle: 'sig_casos_detalle_2026',
+    tablaOpcionesFiltros: 'sig_filtros_opciones_2026',
+    // Se conservan estos nombres solo por compatibilidad con versiones anteriores.
+    tablaCasosPublica: 'sig_casos_lite_2026',
+    tablaCasosAvanzada: 'sig_casos_detalle_2026',
+    tamanoPagina: 500,
+    maxPaginas: 20,
+    timeoutConsultaMs: 20000,
+    timeoutOpcionesMs: 12000
   },
 
   // Estilo inicial de los circleMarker de casos consultados desde Supabase.
@@ -43,6 +54,18 @@ window.SIG_CONFIG = {
       opacidadRelleno: 0.65,
       opacidadLinea: 0.9
     }
+  },
+
+  // Configuración del mapa de calor departamental. Se alimenta desde los registros
+  // filtrados en el panel o desde los resultados de la consola avanzada.
+  mapaCalorDepartamentos: {
+    propiedadNombre: 'DPTO_CNMBR',
+    metricaInicial: 'casos',
+    colorSinDato: '#f8fafc',
+    colorBorde: '#334155',
+    opacidad: 0.78,
+    grosorLinea: 1.2,
+    colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985']
   },
 
   // Definición de panes Leaflet. Los panes controlan el orden de dibujo de las capas.
