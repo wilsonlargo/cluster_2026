@@ -328,7 +328,7 @@
     host.className = activos.length ? 'alert alert-primary-subtle border small mb-3' : 'alert alert-light border small mb-3';
     host.innerHTML = activos.length
       ? `<div class="fw-semibold mb-1"><i class="bi bi-check2-circle me-1"></i>Filtros aplicados</div><div>${activos.map(escapeHtml).join(' · ')}</div>`
-      : '<div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i>Sin filtros aplicados</div><div class="text-muted">Mostrando todos los registros disponibles para el SIG.</div>';
+      : '<div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i>Sin filtros aplicados</div><div class="text-muted">El mapa no consulta automáticamente. Usa “Mostrar todos” o “Aplicar filtros” para cargar resultados.</div>';
   }
 
   // Formatea números para que los resultados del panel sean más legibles.
@@ -343,30 +343,129 @@
     return Number.isFinite(numero) ? numero : 0;
   }
 
-  // Calcula totales poblacionales de los registros filtrados.
-  // Se usa un Map por caso_id para evitar dobles conteos si una consulta futura devuelve un caso más de una vez.
+  // Calcula dos lecturas separadas del filtro:
+  // 1) conteo de casos/registros; 2) sumatoria de personas reportadas.
+  // Un caso puede incluir una o muchas personas, por eso mujeres/hombres/menores
+  // pueden ser mayores que el número de casos del filtro.
   function calcularTotalesPoblacion(registros = []) {
     const casosUnicos = new Map();
 
     (registros || []).forEach(registro => {
-      const llave = String(registro?.caso_id || '').trim();
+      const llave = String(registro?.caso_id || registro?.id || '').trim();
       if (!llave || casosUnicos.has(llave)) return;
       casosUnicos.set(llave, registro);
     });
 
-    let personas = 0;
-    let mujeres = 0;
-    let hombres = 0;
-    let menores = 0;
+    let personasReportadas = 0;
+    let mujeresReportadas = 0;
+    let hombresReportados = 0;
+    let menoresReportados = 0;
+
+    let casosConPersonas = 0;
+    let casosConMujeres = 0;
+    let casosConHombres = 0;
+    let casosConMenores = 0;
+    let casosConDesagregacionSexo = 0;
+    let casosConInconsistenciaSexo = 0;
 
     casosUnicos.forEach(registro => {
-      personas += numeroSeguro(registro.npersonas);
-      mujeres += numeroSeguro(registro.nmujeres);
-      hombres += numeroSeguro(registro.nhombres);
-      menores += numeroSeguro(registro.nmenores);
+      const p = numeroSeguro(registro.npersonas);
+      const m = numeroSeguro(registro.nmujeres);
+      const h = numeroSeguro(registro.nhombres);
+      const n = numeroSeguro(registro.nmenores);
+
+      personasReportadas += p;
+      mujeresReportadas += m;
+      hombresReportados += h;
+      menoresReportados += n;
+
+      if (p > 0) casosConPersonas += 1;
+      if (m > 0) casosConMujeres += 1;
+      if (h > 0) casosConHombres += 1;
+      if (n > 0) casosConMenores += 1;
+      if (m > 0 || h > 0) casosConDesagregacionSexo += 1;
+      if (p > 0 && (m + h) > p) casosConInconsistenciaSexo += 1;
     });
 
-    return { personas, mujeres, hombres, menores };
+    const totalRegistros = casosUnicos.size;
+    const casosSinDatoSexo = Math.max(0, totalRegistros - casosConDesagregacionSexo);
+    const personasSinDatoSexo = Math.max(0, personasReportadas - mujeresReportadas - hombresReportados);
+
+    return {
+      registros: totalRegistros,
+      personas: personasReportadas,
+      mujeres: mujeresReportadas,
+      hombres: hombresReportados,
+      menores: menoresReportados,
+      sinDesagregarSexo: personasSinDatoSexo,
+      porcentajeMujeres: porcentajeSeguro(mujeresReportadas, personasReportadas),
+      porcentajeHombres: porcentajeSeguro(hombresReportados, personasReportadas),
+      porcentajeMenores: porcentajeSeguro(menoresReportados, personasReportadas),
+      casosConPersonas,
+      casosConMujeres,
+      casosConHombres,
+      casosConMenores,
+      casosConDesagregacionSexo,
+      casosSinDatoSexo,
+      casosConInconsistenciaSexo,
+      personasReportadas,
+      mujeresReportadas,
+      hombresReportados,
+      menoresReportados,
+      personasSinDatoSexo
+    };
+  }
+
+  function obtenerCategoriaPoblacionalActiva() {
+    const valorPanel = limpiarValor(qs('filtroPoblacionalSIG')?.value);
+    const valorEstado = filtrosActivos?.poblacional;
+    return normTxt(valorPanel || valorEstado || '');
+  }
+
+  function valorCategoriaPoblacional(totales = {}, categoria = null) {
+    const cat = normTxt(categoria || obtenerCategoriaPoblacionalActiva());
+    if (cat === 'mujeres') return { valor: totales.mujeres || 0, etiqueta: 'Mujeres reportadas' };
+    if (cat === 'hombres') return { valor: totales.hombres || 0, etiqueta: 'Hombres reportados' };
+    if (cat === 'menores') return { valor: totales.menores || 0, etiqueta: 'Menores reportados' };
+    if (cat === 'personas') return { valor: totales.personas || 0, etiqueta: 'Personas reportadas' };
+    return { valor: totales.personas || 0, etiqueta: 'Personas reportadas' };
+  }
+
+  function actualizarNotaPoblacion({
+    registros = 0,
+    personas = 0,
+    mujeres = 0,
+    hombres = 0,
+    menores = 0,
+    sinDesagregarSexo = 0,
+    porcentajeMujeres = 0,
+    porcentajeHombres = 0,
+    porcentajeMenores = 0,
+    casosConInconsistenciaSexo = 0
+  } = {}) {
+    const host = qs('statPoblacionNota');
+    if (!host) return;
+
+    if (!registros) {
+      host.className = 'population-note mb-2';
+      host.textContent = 'Este bloque suma personas/víctimas reportadas en los casos filtrados. Un caso puede incluir una o varias personas.';
+      return;
+    }
+
+    const partes = [];
+    partes.push(`${formatearNumero(registros)} casos en el filtro suman ${formatearNumero(personas)} personas reportadas.`);
+    partes.push(`Mujeres: ${formatearNumero(porcentajeMujeres)}%; hombres: ${formatearNumero(porcentajeHombres)}%; menores: ${formatearNumero(porcentajeMenores)}%.`);
+    partes.push(`Personas sin dato de sexo: ${formatearNumero(sinDesagregarSexo)}.`);
+    partes.push('Menores es una categoría etaria, por eso no se suma directamente con mujeres y hombres.');
+
+    if (casosConInconsistenciaSexo > 0) {
+      partes.push(`Revisar calidad del dato: ${formatearNumero(casosConInconsistenciaSexo)} casos tienen mujeres+hombres mayor que personas reportadas.`);
+      host.className = 'population-note mb-2 text-warning';
+    } else {
+      host.className = 'population-note mb-2';
+    }
+
+    host.textContent = partes.join(' ');
   }
 
   // Actualiza los contadores visibles del panel de filtros.
@@ -377,23 +476,76 @@
     personas = 0,
     mujeres = 0,
     hombres = 0,
-    menores = 0
+    menores = 0,
+    sinDesagregarSexo = 0,
+    porcentajeMujeres = 0,
+    porcentajeHombres = 0,
+    porcentajeMenores = 0,
+    casosConMujeres = 0,
+    casosConHombres = 0,
+    casosConMenores = 0,
+    casosConPersonas = 0,
+    casosSinDatoSexo = 0,
+    casosConInconsistenciaSexo = 0
   } = {}) {
+    const casosSinCoordenadas = Math.max(0, numeroSeguro(registros) - numeroSeguro(casosConCoordenadas));
+
     const statRegistros = qs('statRegistros');
     const statCasosCoord = qs('statCasosCoord');
+    const statCasosSinCoord = qs('statCasosSinCoord');
     const statPuntos = qs('statPuntos');
     const statPersonas = qs('statPersonas');
     const statMujeres = qs('statMujeres');
     const statHombres = qs('statHombres');
     const statMenores = qs('statMenores');
+    const statSinDesagregar = qs('statSinDesagregarSexo');
+    const statCasosConPersonas = qs('statCasosConPersonas');
+    const statCasosConMujeres = qs('statCasosConMujeres');
+    const statCasosConHombres = qs('statCasosConHombres');
+    const statCasosConMenores = qs('statCasosConMenores');
+    const statCasosSinDatoSexo = qs('statCasosSinDatoSexo');
 
     if (statRegistros) statRegistros.textContent = formatearNumero(registros);
     if (statCasosCoord) statCasosCoord.textContent = formatearNumero(casosConCoordenadas);
+    if (statCasosSinCoord) statCasosSinCoord.textContent = formatearNumero(casosSinCoordenadas);
     if (statPuntos) statPuntos.textContent = formatearNumero(puntos);
+
     if (statPersonas) statPersonas.textContent = formatearNumero(personas);
     if (statMujeres) statMujeres.textContent = formatearNumero(mujeres);
     if (statHombres) statHombres.textContent = formatearNumero(hombres);
     if (statMenores) statMenores.textContent = formatearNumero(menores);
+    if (statSinDesagregar) statSinDesagregar.textContent = formatearNumero(sinDesagregarSexo);
+
+    if (statCasosConPersonas) statCasosConPersonas.textContent = formatearNumero(casosConPersonas);
+    if (statCasosConMujeres) statCasosConMujeres.textContent = formatearNumero(casosConMujeres);
+    if (statCasosConHombres) statCasosConHombres.textContent = formatearNumero(casosConHombres);
+    if (statCasosConMenores) statCasosConMenores.textContent = formatearNumero(casosConMenores);
+    if (statCasosSinDatoSexo) statCasosSinDatoSexo.textContent = formatearNumero(casosSinDatoSexo);
+
+    ['cardStatPersonas', 'cardStatMujeres', 'cardStatHombres', 'cardStatMenores', 'cardStatSinDesagregar'].forEach(id => qs(id)?.classList.remove('stat-focus'));
+    const cat = obtenerCategoriaPoblacionalActiva();
+    const foco = {
+      personas: 'cardStatPersonas',
+      mujeres: 'cardStatMujeres',
+      hombres: 'cardStatHombres',
+      menores: 'cardStatMenores'
+    }[cat] || 'cardStatPersonas';
+    if (foco) qs(foco)?.classList.add('stat-focus');
+
+    ['cardStatPersonas', 'cardStatMujeres', 'cardStatHombres', 'cardStatMenores', 'cardStatSinDesagregar'].forEach(id => qs(id)?.classList.toggle('stat-warning', casosConInconsistenciaSexo > 0));
+
+    actualizarNotaPoblacion({
+      registros,
+      personas,
+      mujeres,
+      hombres,
+      menores,
+      sinDesagregarSexo,
+      porcentajeMujeres,
+      porcentajeHombres,
+      porcentajeMenores,
+      casosConInconsistenciaSexo
+    });
   }
 
 
@@ -411,7 +563,22 @@
 
   function obtenerNombreDepartamentoFeature(feature) {
     const props = feature?.properties || {};
-    return props.DPTO_CNMBR || props.DEPARTAMEN || props.DEPTO || props.NOMBRE_DPT || props.NOMBRE || props.nombre || '';
+    const propiedadConfig = window.SIG_CONFIG?.mapaCalorDepartamentos?.propiedadNombre || 'DPTO_CNMBR';
+    return String(
+      props[propiedadConfig]
+      || props.DPTO_CNMBR
+      || props.DEPARTAMEN
+      || props.DEPTO
+      || props.NOMBRE_DPT
+      || props.NOMBRE
+      || props.nombre
+      || ''
+    ).trim();
+  }
+
+  function obtenerCodigoDepartamentoFeature(feature) {
+    const props = feature?.properties || {};
+    return String(props.DPTO_CCDGO || props.COD_DEPTO || props.CODIGO || props.codigo || '').trim();
   }
 
   function obtenerConfiguracionCalorDepto() {
@@ -445,6 +612,53 @@
     return Array.from(departamentos.entries()).map(([key, nombre]) => ({ key, nombre }));
   }
 
+
+  function incrementarConteo(mapa, valor) {
+    const texto = String(valor ?? '').trim();
+    if (!texto || texto === '—') return;
+    const key = normTxt(texto);
+    if (!key) return;
+    if (!mapa.has(key)) mapa.set(key, { nombre: texto, total: 0 });
+    mapa.get(key).total += 1;
+  }
+
+  function topConteos(mapa, limite = 5) {
+    return Array.from((mapa || new Map()).values())
+      .sort((a, b) => (b.total || 0) - (a.total || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'))
+      .slice(0, limite);
+  }
+
+  function textoTopConteos(mapa, limite = 5) {
+    const top = topConteos(mapa, limite);
+    if (!top.length) return '—';
+    return top.map(item => `${escapeHtml(item.nombre)} <span class="text-muted">(${formatearNumero(item.total)})</span>`).join(', ');
+  }
+
+  function porcentajeSeguro(parte, total) {
+    const p = numeroSeguro(parte);
+    const t = numeroSeguro(total);
+    if (!t || t <= 0) return 0;
+    return Math.round((p / t) * 1000) / 10;
+  }
+
+  function etiquetaRangoAnios(anios) {
+    const lista = Array.from(anios || [])
+      .map(v => Number(v))
+      .filter(v => Number.isFinite(v) && v > 0)
+      .sort((a, b) => a - b);
+    if (!lista.length) return '—';
+    if (lista.length === 1) return String(lista[0]);
+    return `${lista[0]}-${lista[lista.length - 1]}`;
+  }
+
+  function obtenerAnioRegistro(registro) {
+    const anioDirecto = Number(registro?.anio);
+    if (Number.isFinite(anioDirecto) && anioDirecto > 0) return anioDirecto;
+    const fecha = String(registro?.fecha_evento || '').slice(0, 4);
+    const anioFecha = Number(fecha);
+    return Number.isFinite(anioFecha) && anioFecha > 0 ? anioFecha : null;
+  }
+
   function calcularEstadisticasDepartamentales(registros = []) {
     const stats = new Map();
     const vistos = new Set();
@@ -452,6 +666,8 @@
     (registros || []).forEach((registro, indice) => {
       const casoId = String(registro?.caso_id || registro?.id || `sin-id-${indice}`);
       const departamentos = extraerDepartamentosRegistro(registro);
+      const lugares = normalizarArregloJsonb(registro?.lugares);
+      const anio = obtenerAnioRegistro(registro);
 
       departamentos.forEach(({ key, nombre }) => {
         if (!key) return;
@@ -466,7 +682,12 @@
             personas: 0,
             mujeres: 0,
             hombres: 0,
-            menores: 0
+            menores: 0,
+            municipios: new Map(),
+            macrotipos: new Map(),
+            pueblos: new Map(),
+            macroactores: new Map(),
+            anios: new Set()
           });
         }
 
@@ -476,6 +697,16 @@
         item.mujeres += numeroSeguro(registro.nmujeres);
         item.hombres += numeroSeguro(registro.nhombres);
         item.menores += numeroSeguro(registro.nmenores);
+
+        if (anio) item.anios.add(anio);
+        incrementarConteo(item.macrotipos, registro.macrotipo);
+        incrementarConteo(item.macroactores, registro.macroactor);
+        extraerValoresPueblo(registro).forEach(pueblo => incrementarConteo(item.pueblos, pueblo));
+
+        lugares.forEach(lugar => {
+          const deptoLugar = normTxt(lugar?.departamento);
+          if (deptoLugar && deptoLugar === key) incrementarConteo(item.municipios, lugar?.municipio);
+        });
       });
     });
 
@@ -529,33 +760,86 @@
 
   function crearPopupDepartamentoCalor(feature, nombreCapa) {
     const nombre = obtenerNombreDepartamentoFeature(feature);
-    if (!estadoMapaCalorDepto.activo || !nombre || normTxt(nombreCapa) !== 'departamentos') return null;
+    const esCapaDepartamentos = normTxt(nombreCapa) === 'departamentos' || Boolean(feature?.properties?.DPTO_CNMBR);
+    if (!nombre || !esCapaDepartamentos) return null;
 
+    // Si el mapa de calor aún no recalculó estadísticas, las calculamos al vuelo
+    // con los casos vigentes del filtro visual o de la consola avanzada.
+    const registrosVigentes = window.SIG_STATE?.casosConsultados || [];
+    if ((!estadoMapaCalorDepto.stats || !estadoMapaCalorDepto.stats.size) && registrosVigentes.length) {
+      estadoMapaCalorDepto.stats = calcularEstadisticasDepartamentales(registrosVigentes);
+      estadoMapaCalorDepto.max = Array.from(estadoMapaCalorDepto.stats.values()).reduce((max, item) => Math.max(max, valorMetricaDepartamento(item, estadoMapaCalorDepto.metrica)), 0);
+      estadoMapaCalorDepto.departamentosConDato = Array.from(estadoMapaCalorDepto.stats.values()).filter(item => valorMetricaDepartamento(item, estadoMapaCalorDepto.metrica) > 0).length;
+    }
+
+    const codigo = obtenerCodigoDepartamentoFeature(feature);
     const item = estadoMapaCalorDepto.stats.get(normTxt(nombre)) || {
+      nombre,
       casos: 0,
       personas: 0,
       mujeres: 0,
       hombres: 0,
-      menores: 0
+      menores: 0,
+      municipios: new Map(),
+      macrotipos: new Map(),
+      pueblos: new Map(),
+      macroactores: new Map(),
+      anios: new Set()
     };
     const metrica = estadoMapaCalorDepto.metrica === 'personas' ? 'personas' : 'casos';
     const valor = valorMetricaDepartamento(item, metrica);
+    const pctMujeres = porcentajeSeguro(item.mujeres, item.personas);
+    const pctMenores = porcentajeSeguro(item.menores, item.personas);
+    const totalMunicipios = (item.municipios instanceof Map) ? item.municipios.size : 0;
+    const tieneDatos = numeroSeguro(item.casos) > 0;
+    const etiquetaIntensidad = metrica === 'personas' ? 'intensidad por personas' : 'intensidad por casos';
+
+    const detalleHTML = tieneDatos ? `
+        <div class="border rounded-3 p-2 mb-2 bg-light">
+          <div class="fw-semibold small mb-1">Lectura territorial del filtro actual</div>
+          <div class="small"><strong>Años:</strong> ${escapeHtml(etiquetaRangoAnios(item.anios))}</div>
+          <div class="small"><strong>Municipios con registros:</strong> ${escapeHtml(formatearNumero(totalMunicipios))}</div>
+          <div class="small"><strong>Municipios principales:</strong> ${textoTopConteos(item.municipios, 5)}</div>
+        </div>
+        <div class="small mb-1"><strong>Macrotipos principales:</strong> ${textoTopConteos(item.macrotipos, 4)}</div>
+        <div class="small mb-1"><strong>Pueblos registrados:</strong> ${textoTopConteos(item.pueblos, 5)}</div>
+        <div class="small mb-2"><strong>Macroactores:</strong> ${textoTopConteos(item.macroactores, 4)}</div>
+      ` : `
+        <div class="alert alert-light border py-2 small mb-2">
+          Este departamento no tiene registros dentro del filtro o comando vigente.
+        </div>
+      `;
 
     return `
-      <div style="min-width:260px">
-        <div class="fw-bold mb-1">${escapeHtml(nombre)}</div>
-        <div class="small text-muted mb-2">Mapa de calor departamental · ${escapeHtml(metrica === 'personas' ? 'Número de personas' : 'Número de casos')}</div>
-        <table class="table table-sm mb-2">
-          <tbody>
-            <tr><th class="text-muted pe-2">Valor de intensidad</th><td><strong>${escapeHtml(formatearNumero(valor))}</strong></td></tr>
-            <tr><th class="text-muted pe-2">Casos</th><td>${escapeHtml(formatearNumero(item.casos || 0))}</td></tr>
-            <tr><th class="text-muted pe-2">Personas</th><td>${escapeHtml(formatearNumero(item.personas || 0))}</td></tr>
-            <tr><th class="text-muted pe-2">Mujeres</th><td>${escapeHtml(formatearNumero(item.mujeres || 0))}</td></tr>
-            <tr><th class="text-muted pe-2">Hombres</th><td>${escapeHtml(formatearNumero(item.hombres || 0))}</td></tr>
-            <tr><th class="text-muted pe-2">Menores</th><td>${escapeHtml(formatearNumero(item.menores || 0))}</td></tr>
-          </tbody>
-        </table>
-        <div class="small text-muted">Cruce por <code>DPTO_CNMBR</code>. Los casos multidepartamentales se contabilizan una vez por departamento.</div>
+      <div class="sig-popup-departamento" style="min-width:310px;max-width:410px">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <div>
+            <div class="fw-bold fs-6">${escapeHtml(nombre)}</div>
+            <div class="small text-muted">${codigo ? `Código DANE: ${escapeHtml(codigo)} · ` : ''}Mapa de calor departamental</div>
+            <div class="small text-muted">${escapeHtml(etiquetaIntensidad)}</div>
+          </div>
+          <span class="badge text-bg-primary">${escapeHtml(formatearNumero(valor))}</span>
+        </div>
+
+        <div class="row g-1 mb-2 text-center">
+          <div class="col-6"><div class="border rounded p-1"><div class="small text-muted">Casos</div><div class="fw-bold">${escapeHtml(formatearNumero(item.casos || 0))}</div></div></div>
+          <div class="col-6"><div class="border rounded p-1"><div class="small text-muted">Personas</div><div class="fw-bold">${escapeHtml(formatearNumero(item.personas || 0))}</div></div></div>
+          <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Mujeres</div><div class="fw-semibold">${escapeHtml(formatearNumero(item.mujeres || 0))}</div></div></div>
+          <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Hombres</div><div class="fw-semibold">${escapeHtml(formatearNumero(item.hombres || 0))}</div></div></div>
+          <div class="col-4"><div class="border rounded p-1"><div class="small text-muted">Menores</div><div class="fw-semibold">${escapeHtml(formatearNumero(item.menores || 0))}</div></div></div>
+        </div>
+
+        ${tieneDatos ? `
+          <div class="d-flex gap-2 flex-wrap mb-2 small">
+            <span class="badge rounded-pill text-bg-light border">Mujeres: ${escapeHtml(formatearNumero(pctMujeres))}%</span>
+            <span class="badge rounded-pill text-bg-light border">Menores: ${escapeHtml(formatearNumero(pctMenores))}%</span>
+          </div>` : ''}
+
+        ${detalleHTML}
+
+        <div class="small text-muted border-top pt-2">
+          Cruce por <code>DPTO_CNMBR</code>. Los casos multidepartamentales se cuentan una vez por departamento. Los datos corresponden al filtro visual o comando de consola vigente.
+        </div>
       </div>`;
   }
 
@@ -1214,7 +1498,9 @@
     await consultarYPintarCasosSIG(filtros, { boton: qs('btnAplicarFiltrosSIG') });
   }
 
-  // Limpia los controles del panel y vuelve a mostrar todos los registros.
+  // Limpia los controles del panel y deja el mapa sin resultados.
+  // Importante: limpiar filtros NO vuelve a consultar todos los registros.
+  // Para cargar todo existe el botón independiente “Mostrar todos”.
   async function limpiarFiltrosSIG() {
     [
       'filtroAnioSIG',
@@ -1230,10 +1516,20 @@
     });
 
     const filtros = crearFiltrosVacios();
-
     guardarFiltrosActivos(filtros);
     actualizarTextoFiltrosActivos(filtros);
-    await consultarYPintarCasosSIG(filtros, { boton: qs('btnLimpiarFiltrosSIG') });
+
+    // Borra puntos, conteos y resultados vigentes sin lanzar consulta nueva.
+    limpiarRegistrosMapa();
+
+    // También limpia la intensidad departamental para que no queden colores
+    // asociados a un filtro anterior.
+    if (estadoMapaCalorDepto.activo) {
+      limpiarMapaCalorDepartamentos();
+    }
+
+    mostrarAvisoFiltros('secondary', 'Filtros limpiados. El mapa quedó sin resultados. Usa “Mostrar todos” o “Aplicar filtros” para consultar de nuevo.');
+    actualizarEstado('Filtros limpiados');
   }
 
   // Carga opciones de filtros locales sin consultar Supabase al iniciar.

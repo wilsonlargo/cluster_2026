@@ -127,7 +127,9 @@ window.SIG_CONFIG = {
       nombre: 'Departamentos',
       archivo: './Layers/003departamentos.geojson',
       activa: false,
-      pane: 'pane3',
+      // Se ubica arriba de municipios/resguardos para permitir clic directo en departamentos.
+      // Los puntos de casos siguen encima en pane9.
+      pane: 'pane8',
       colorCapa: '#bdd7ee',
       colorLinea: '#1f77b4',
       opacidad: 0.3,

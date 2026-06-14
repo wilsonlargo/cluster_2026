@@ -212,6 +212,22 @@
       line-height: 1.15;
     }
 
+    .filter-stat.stat-focus {
+      border-color: rgba(13, 110, 253, .35);
+      background: rgba(13, 110, 253, .06);
+    }
+
+    .filter-stat.stat-warning {
+      border-color: rgba(255, 193, 7, .45);
+      background: rgba(255, 193, 7, .08);
+    }
+
+    .population-note {
+      font-size: .74rem;
+      color: var(--sig-muted);
+      line-height: 1.25;
+    }
+
     .marker-preview-wrap {
       min-height: 42px;
       display: flex;
@@ -577,25 +593,46 @@
         <button id="btnLimpiarRegistros" type="button" class="btn btn-outline-secondary filter-action-btn"><i class="bi bi-eraser me-2"></i>Limpiar registros del mapa</button>
       </div>
 
-      <div class="row g-2 mb-3">
-        <div class="col-4"><div class="filter-stat"><div id="statRegistros" class="number">0</div><div class="label">Registros vinculados</div></div></div>
-        <div class="col-4"><div class="filter-stat"><div id="statCasosCoord" class="number">0</div><div class="label">Casos con coordenadas</div></div></div>
-        <div class="col-4"><div class="filter-stat"><div id="statPuntos" class="number">0</div><div class="label">Puntos en mapa</div></div></div>
-      </div>
-
-      <div class="filter-block">
-        <div class="filter-block-title"><i class="bi bi-people"></i>Población incluida en el filtro</div>
+      <section class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-folder2-open"></i>Casos del filtro</div>
+        <div class="sig-help mb-2">Estos valores cuentan registros/casos. Los puntos pueden ser más que los casos cuando un caso tiene varios municipios vinculados.</div>
         <div class="row g-2">
-          <div class="col-6"><div class="filter-stat"><div id="statPersonas" class="number">0</div><div class="label">Personas</div></div></div>
-          <div class="col-6"><div class="filter-stat"><div id="statMujeres" class="number">0</div><div class="label">Mujeres</div></div></div>
-          <div class="col-6"><div class="filter-stat"><div id="statHombres" class="number">0</div><div class="label">Hombres</div></div></div>
-          <div class="col-6"><div class="filter-stat"><div id="statMenores" class="number">0</div><div class="label">Menores</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statRegistros" class="number">0</div><div class="label">Registros vinculados</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statCasosCoord" class="number">0</div><div class="label">Casos con coordenadas</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statPuntos" class="number">0</div><div class="label">Puntos en mapa</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statCasosSinCoord" class="number">0</div><div class="label">Casos sin coordenadas</div></div></div>
         </div>
-      </div>
+      </section>
+
+      <section class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-people"></i>Personas reportadas en el filtro</div>
+        <div id="statPoblacionNota" class="population-note mb-2">
+          Este bloque suma personas/víctimas reportadas en los casos filtrados. Un caso puede incluir una o varias personas.
+        </div>
+        <div class="row g-2">
+          <div class="col-6"><div id="cardStatPersonas" class="filter-stat stat-focus"><div id="statPersonas" class="number">0</div><div class="label">Personas reportadas</div></div></div>
+          <div class="col-6"><div id="cardStatMujeres" class="filter-stat"><div id="statMujeres" class="number">0</div><div class="label">Mujeres reportadas</div></div></div>
+          <div class="col-6"><div id="cardStatHombres" class="filter-stat"><div id="statHombres" class="number">0</div><div class="label">Hombres reportados</div></div></div>
+          <div class="col-6"><div id="cardStatMenores" class="filter-stat"><div id="statMenores" class="number">0</div><div class="label">Menores reportados</div></div></div>
+          <div class="col-12"><div id="cardStatSinDesagregar" class="filter-stat"><div id="statSinDesagregarSexo" class="number">0</div><div class="label">Personas sin dato de sexo</div></div></div>
+        </div>
+      </section>
+
+      <section class="filter-block">
+        <div class="filter-block-title"><i class="bi bi-clipboard2-check"></i>Calidad del dato poblacional</div>
+        <div class="sig-help mb-2">Estos valores cuentan casos del filtro que tienen dato poblacional registrado.</div>
+        <div class="row g-2">
+          <div class="col-6"><div class="filter-stat"><div id="statCasosConPersonas" class="number">0</div><div class="label">Casos con personas</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statCasosConMujeres" class="number">0</div><div class="label">Casos con mujeres</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statCasosConHombres" class="number">0</div><div class="label">Casos con hombres</div></div></div>
+          <div class="col-6"><div class="filter-stat"><div id="statCasosConMenores" class="number">0</div><div class="label">Casos con menores</div></div></div>
+          <div class="col-12"><div class="filter-stat"><div id="statCasosSinDatoSexo" class="number">0</div><div class="label">Casos sin dato de sexo</div></div></div>
+        </div>
+      </section>
 
       <div class="alert alert-light border small mb-0">
         <div class="fw-semibold mb-1"><i class="bi bi-shield-check me-1"></i>Consulta pública controlada</div>
-        <div class="text-muted">Este panel llama funciones RPC del SIG. El número de registros vinculados incluye casos que cumplen el filtro aunque no tengan coordenadas para pintar.</div>
+        <div class="text-muted">Este panel consulta tablas ligeras del SIG. El número de registros vinculados incluye casos que cumplen el filtro aunque no tengan coordenadas para pintar.</div>
       </div>
     </div>
   </aside>
@@ -706,10 +743,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Configuración externa de capas, panes, colores, Supabase y estilo de casos. -->
-  <script src="./configlayers.js?v=20260614-noinit11"></script>
+  <script src="./configlayers.js?v=20260614-casospersonas-v18"></script>
 
   <!-- Lógica externa de filtros, consultas a Supabase y puntos de casos. -->
-  <script src="./datasig.js?v=20260614-noinit11"></script>
+  <script src="./datasig.js?v=20260614-casospersonas-v18"></script>
 
   <script>
     // Estado interno del SIG compartido con datasig.js.
@@ -721,7 +758,8 @@
       geojsonPorId: new Map(),
       cargandoPorId: new Set(),
       casosConsultados: [],
-      mapaCalorDepartamentos: null
+      mapaCalorDepartamentos: null,
+      ultimoClickDepartamentoMs: 0
     };
 
     // Atajo para obtener elementos del DOM por id.
@@ -800,19 +838,143 @@
       return `<div style="min-width:220px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${filas ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>` : '<div class="text-muted small">Sin atributos visibles.</div>'}</div>`;
     }
 
+    // Abre un popup Leaflet real sobre el punto exacto del clic.
+    // Para departamentos usamos L.popup().openOn(mapa), no solo bindPopup(),
+    // porque los polígonos multiparte pueden fallar al calcular un centro automático.
+    function abrirPopupLeaflet(feature, layer, capaConfig, event) {
+      const html = crearPopupDesdePropiedades(feature, capaConfig.nombre);
+      const latlng = event?.latlng
+        || (layer?.getBounds ? layer.getBounds().getCenter() : SIG_STATE.mapa.getCenter());
+
+      if (event?.originalEvent) {
+        L.DomEvent.stopPropagation(event.originalEvent);
+        L.DomEvent.preventDefault(event.originalEvent);
+      }
+
+      L.popup({
+        maxWidth: 460,
+        minWidth: 300,
+        autoPan: true,
+        closeButton: true,
+        className: capaConfig.id === 'departamentos' ? 'sig-popup-leaflet-departamento' : ''
+      })
+        .setLatLng(latlng)
+        .setContent(html)
+        .openOn(SIG_STATE.mapa);
+    }
+
+
+    // Sube temporalmente la capa de departamentos por encima de municipios/resguardos
+    // para que el clic sobre polígonos departamentales no quede capturado por otra capa.
+    function asegurarDepartamentosClicables() {
+      const paneDeptos = SIG_STATE.mapa?.getPane('pane8') || SIG_STATE.mapa?.getPane('pane3');
+      const paneCasos = SIG_STATE.mapa?.getPane('pane9');
+      if (paneDeptos) {
+        paneDeptos.style.zIndex = '590';
+        paneDeptos.style.pointerEvents = 'auto';
+      }
+      if (paneCasos) {
+        paneCasos.style.zIndex = '620';
+        paneCasos.style.pointerEvents = 'auto';
+      }
+    }
+
+    // Fallback geométrico: si otra capa captura el clic y el evento directo del
+    // departamento no se dispara, se identifica el departamento bajo el cursor.
+    function puntoEnAnilloGeoJSON(punto, anillo) {
+      const x = punto.lng;
+      const y = punto.lat;
+      let dentro = false;
+      for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+        const xi = Number(anillo[i][0]);
+        const yi = Number(anillo[i][1]);
+        const xj = Number(anillo[j][0]);
+        const yj = Number(anillo[j][1]);
+        const intersecta = ((yi > y) !== (yj > y)) &&
+          (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-12) + xi);
+        if (intersecta) dentro = !dentro;
+      }
+      return dentro;
+    }
+
+    function puntoEnPoligonoGeoJSON(punto, poligono) {
+      if (!Array.isArray(poligono) || !poligono.length) return false;
+      if (!puntoEnAnilloGeoJSON(punto, poligono[0])) return false;
+      // Los anillos internos son huecos.
+      for (let i = 1; i < poligono.length; i += 1) {
+        if (puntoEnAnilloGeoJSON(punto, poligono[i])) return false;
+      }
+      return true;
+    }
+
+    function puntoEnFeatureDepartamento(punto, feature) {
+      const geom = feature?.geometry;
+      if (!geom) return false;
+      if (geom.type === 'Polygon') return puntoEnPoligonoGeoJSON(punto, geom.coordinates);
+      if (geom.type === 'MultiPolygon') return (geom.coordinates || []).some(poligono => puntoEnPoligonoGeoJSON(punto, poligono));
+      return false;
+    }
+
+    function buscarDepartamentoEnLatLng(latlng) {
+      const capa = SIG_STATE.capasPorId.get('departamentos');
+      if (!capa || !latlng) return null;
+      let encontrado = null;
+      capa.eachLayer(layer => {
+        if (encontrado || !layer?.feature) return;
+        if (layer.getBounds && !layer.getBounds().contains(latlng)) return;
+        if (puntoEnFeatureDepartamento(latlng, layer.feature)) encontrado = layer;
+      });
+      return encontrado;
+    }
+
+    function abrirPopupDepartamentoFallback(event) {
+      const capaConfig = SIG_CONFIG.capas.find(capa => capa.id === 'departamentos');
+      if (!capaConfig || !SIG_STATE.capasPorId.has('departamentos')) return;
+      // Evita duplicar cuando el clic directo del polígono sí funcionó.
+      if (Date.now() - Number(SIG_STATE.ultimoClickDepartamentoMs || 0) < 180) return;
+      const layer = buscarDepartamentoEnLatLng(event.latlng);
+      if (!layer) return;
+      abrirPopupLeaflet(layer.feature, layer, capaConfig, event);
+    }
+
     // Crea una capa Leaflet desde un GeoJSON cargado.
     function crearCapaLeaflet(capaConfig, geojson) {
       const estilo = obtenerEstiloCapa(capaConfig);
       return L.geoJSON(geojson, {
         pane: capaConfig.pane,
+        interactive: true,
+        bubblingMouseEvents: false,
         style: feature => window.SIG_DATOS?.obtenerEstiloDepartamentoCalor?.(feature, capaConfig, estilo) || estilo,
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, { ...estilo, radius: Math.max(4, Number(capaConfig.grosorLinea) + 3) }),
         onEachFeature: (feature, layer) => {
           layer._sigCapaId = capaConfig.id;
-          layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre));
+
           if (capaConfig.id === 'departamentos') {
-            layer.on('mouseover', () => layer.setStyle({ weight: Math.max(2, Number(capaConfig.grosorLinea || 1) + 1) }));
+            // Popup con API nativa de Leaflet: L.popup().setLatLng().setContent().openOn(map).
+            // También se deja bindPopup como respaldo para navegadores/capas multipolígono.
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre), {
+              maxWidth: 460,
+              minWidth: 300,
+              autoPan: true,
+              closeButton: true,
+              className: 'sig-popup-leaflet-departamento'
+            });
+            layer.on('click', event => {
+              SIG_STATE.ultimoClickDepartamentoMs = Date.now();
+              abrirPopupLeaflet(feature, layer, capaConfig, event);
+            });
+            layer.on('mouseover', () => {
+              if (layer.setStyle) {
+                layer.setStyle({ weight: Math.max(2, Number(capaConfig.grosorLinea || 1) + 1), opacity: 1 });
+              }
+              if (layer.bringToFront) layer.bringToFront();
+            });
             layer.on('mouseout', () => window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true }));
+          } else {
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre), {
+              maxWidth: 420,
+              autoPan: true
+            });
           }
         }
       });
@@ -859,6 +1021,7 @@
       capaConfig.activa = true;
       actualizarColorIndicador(capaConfig);
       if (capaConfig.id === 'departamentos') {
+        asegurarDepartamentosClicables();
         window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
       }
       actualizarEstado(`${capaConfig.nombre} activa`);
@@ -897,6 +1060,7 @@
         });
       }
       if (capaConfig.id === 'departamentos') {
+        asegurarDepartamentosClicables();
         window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
       }
       actualizarColorIndicador(capaConfig);
@@ -1162,6 +1326,7 @@
       crearPanesLeaflet(mapa);
       SIG_STATE.capaCasos = L.layerGroup().addTo(mapa);
       crearControlZoomSuave(SIG_CONFIG.mapa.pasoZoom || 0.25).addTo(mapa);
+      mapa.on('click', abrirPopupDepartamentoFallback);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
