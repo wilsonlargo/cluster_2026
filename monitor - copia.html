@@ -62,43 +62,6 @@
       transform: scale(.75);
       margin-left: .25rem;
     }
-
-    .case-form-card {
-      transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
-    }
-
-    body.contextual-active {
-      background: #fff7e6;
-    }
-
-    body.contextual-active .case-form-card {
-      background: #fffaf0;
-      border-color: rgba(255, 193, 7, .8);
-      box-shadow: 0 .5rem 1rem rgba(255, 193, 7, .16) !important;
-    }
-
-    .contextual-banner {
-      display: none;
-      align-items: center;
-      gap: .5rem;
-      border: 1px solid rgba(255, 193, 7, .65);
-      background: #fff3cd;
-      color: #664d03;
-      border-radius: .75rem;
-      padding: .65rem .85rem;
-    }
-
-    body.contextual-active #contextualBanner {
-      display: flex;
-    }
-
-    .contextual-switch {
-      border: 1px solid rgba(255, 193, 7, .45);
-      background: #fffdf7;
-      border-radius: 999px;
-      padding: .35rem .75rem .35rem 2.5rem;
-    }
-
   </style>
 </head>
 
@@ -126,32 +89,27 @@
           <select id="selectYear" class="form-select form-select-sm" style="width:120px;" aria-label="Seleccionar año">
             <option value="" selected>Cargando…</option>
           </select>
+          <button id="btnLogoutToIndex" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" type="button" title="Cerrar sesión y volver al inicio" aria-label="Cerrar sesión y volver al inicio">
+            <i class="bi bi-box-arrow-left"></i>
+            <span class="d-none d-md-inline">Salir</span>
+          </button>
         </div>
       </div>
     </div>
   </nav>
 
   <main class="container-fluid py-3">
-    <div id="caseFormCard" class="card shadow-sm case-form-card">
+    <div class="card shadow-sm">
       <div class="card-body">
         <div id="monitorAlert" class="mb-3"></div>
-
-        <div id="contextualBanner" class="contextual-banner mb-3" role="status" aria-live="polite">
-          <i class="bi bi-exclamation-triangle-fill"></i>
-          <div><strong>Caso contextual activo.</strong> Este registro queda identificado como información contextual.</div>
-        </div>
 
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-2 text-info">
             <i class="bi bi-activity"></i>
             <div class="fw-semibold  fs-5">Casos</div>
           </div>
-          <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+          <div class="d-flex align-items-center gap-2">
   <div id="caseInfo" class="text-muted small">Sin casos</div>
-  <div class="form-check form-switch contextual-switch mb-0" title="Marcar este caso como contextual">
-    <input class="form-check-input" type="checkbox" role="switch" id="contextualType" aria-label="Marcar caso como contextual">
-    <label class="form-check-label small fw-semibold" for="contextualType">Caso contextual</label>
-  </div>
   <button id="btnOpenAudit" type="button" class="btn btn-outline-secondary btn-sm" title="Filtros" aria-label="Filtros">
     <i class="bi bi-funnel"></i>
   </button>
@@ -562,6 +520,33 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnLogoutToIndex = document.getElementById('btnLogoutToIndex');
+      if (!btnLogoutToIndex) return;
+
+      btnLogoutToIndex.addEventListener('click', async () => {
+        btnLogoutToIndex.disabled = true;
+        btnLogoutToIndex.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="d-none d-md-inline">Saliendo…</span>';
+
+        try {
+          const supabaseClient = (typeof state !== 'undefined' && state.supabase)
+            ? state.supabase
+            : (window.supabase?.createClient && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined')
+              ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+              : null;
+
+          if (supabaseClient?.auth?.signOut) {
+            await supabaseClient.auth.signOut();
+          }
+        } catch (error) {
+          console.error('Error cerrando sesión:', error);
+        } finally {
+          window.location.href = 'index.html';
+        }
+      });
+    });
+  </script>
 
   <!-- MODAL PERSONA -->
   <div class="modal fade" id="modalPersona" tabindex="-1">

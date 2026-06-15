@@ -11,7 +11,7 @@
 // ✅ Quitar municipio: borra por (caso_id, municipio)
 
 const SUPABASE_URL = 'https://sjvuxlcgeswapbphsqkv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE';
+const SUPABASE_ANON_KEY = 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg';
 
 const INDEX_PAGE = 'index.html';
 const MONITOR_PAGE = 'monitor.html';
@@ -278,22 +278,6 @@ function setBtnEnabled(id, enabled) {
   b.disabled = !enabled;
 }
 
-function applyContextualVisual(isContextual) {
-  const active = !!isContextual;
-  document.body.classList.toggle('contextual-active', active);
-
-  const card = qs('caseFormCard');
-  if (card) {
-    card.classList.toggle('border-warning', active);
-  }
-
-  const contextualInfo = qs('contextualInfo');
-  if (contextualInfo) {
-    contextualInfo.classList.toggle('border-warning', active);
-  }
-}
-
-
 async function setIndex(newIdx, supabaseClient) {
   state.idx = newIdx;
   renderCurrentCase();
@@ -314,7 +298,6 @@ function renderCurrentCase() {
   const enlaceFuenteEl = qs('enlaceFuente');
   const btnOpenFuente = qs('btnOpenFuente');
   const contextualEl = qs('contextualInfo');
-  const contextualTypeEl = qs('contextualType');
 
   const selMacroactor = qs('selectMacroactor');
   const selMicroactor = qs('microactorNew');
@@ -345,11 +328,6 @@ function renderCurrentCase() {
     if (nMujeres) nMujeres.value = 0;
     if (nHombres) nHombres.value = 0;
     if (nMenores) nMenores.value = 0;
-    if (contextualTypeEl) {
-      contextualTypeEl.checked = false;
-      contextualTypeEl.disabled = true;
-    }
-    applyContextualVisual(false);
 
     renderSubtiposBadges({ subtipos: [] });
     renderPueblosBadges({ pueblo: [] }, state.supabase);
@@ -375,11 +353,6 @@ function renderCurrentCase() {
   if (fechaFuenteEl) fechaFuenteEl.value = cur.fechafuente ? String(cur.fechafuente).slice(0, 10) : '';
   if (enlaceFuenteEl) enlaceFuenteEl.value = cur.enlace || '';
   if (contextualEl) contextualEl.value = cur.contextual_info || '';
-  if (contextualTypeEl) {
-    contextualTypeEl.disabled = false;
-    contextualTypeEl.checked = !!cur.contextual_type;
-  }
-  applyContextualVisual(!!cur.contextual_type);
   if (btnOpenFuente) {
     const url = (cur.enlace || '').trim();
     btnOpenFuente.disabled = !url;
@@ -938,7 +911,7 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
 
   let q = supabaseClient
     .from(TBL_CASOS)
-    .select('id, fecha_evento, macrotipo, detalle, subtipos, pueblo, detalle_lugar, npersonas, nmujeres, nhombres, nmenores, macroactor, microactores, fuente, fechafuente, enlace, contextual_info, contextual_type')
+    .select('id, fecha_evento, macrotipo, detalle, subtipos, pueblo, detalle_lugar, npersonas, nmujeres, nhombres, nmenores, macroactor, microactores, fuente, fechafuente, enlace, contextual_info')
     .order('fecha_evento', { ascending: true });
 
   if (year) q = q.gte('fecha_evento', `${year}-01-01`).lte('fecha_evento', `${year}-12-31`);
@@ -960,7 +933,6 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
     fechafuente: r.fechafuente ?? null,
     enlace: r.enlace ?? null,
     contextual_info: r.contextual_info ?? null,
-    contextual_type: r.contextual_type === true,
     npersonas: Number(r.npersonas ?? 0),
     nmujeres: Number(r.nmujeres ?? 0),
     nhombres: Number(r.nhombres ?? 0),
@@ -1048,7 +1020,6 @@ async function saveFechaEvento(supabaseClient) {
     macrotipo: (mtSel ? (mtSel.value || null) : (cur.macrotipo || null)),
     detalle: (det ? (det.value.trim() || null) : (cur.detalle || null)),
     subtipos: Array.isArray(cur.subtipos) ? cur.subtipos : [],
-    contextual_type: !!qs('contextualType')?.checked,
     npersonas: readInt('npersonas'),
     nmujeres: readInt('nmujeres'),
     nhombres: readInt('nhombres'),
@@ -1071,7 +1042,7 @@ async function addCase(supabaseClient) {
 
   const { data, error } = await supabaseClient
     .from(TBL_CASOS)
-    .insert({ fecha_evento: defaultDate, npersonas: 0, nmujeres: 0, nhombres: 0, nmenores: 0, macroactor: null, microactores: [], contextual_type: false })
+    .insert({ fecha_evento: defaultDate, npersonas: 0, nmujeres: 0, nhombres: 0, nmenores: 0, macroactor: null, microactores: [] })
     .select('id')
     .single();
 
@@ -1265,33 +1236,6 @@ async function removeMunicipioFromCaso(supabaseClient, municipioTxt) {
 
 
 
-
-
-
-async function updateContextualTypeAuto(supabaseClient) {
-  const cur = getCurrentCase();
-  const input = qs('contextualType');
-  if (!cur || !input) return;
-
-  const contextual_type = !!input.checked;
-  applyContextualVisual(contextual_type);
-
-  const { error } = await supabaseClient
-    .from(TBL_CASOS)
-    .update({ contextual_type })
-    .eq('id', cur.id);
-
-  if (error) {
-    console.error('update contextual_type', error);
-    showAlert('danger', error.message || 'No se pudo actualizar contextual_type');
-    input.checked = !!cur.contextual_type;
-    applyContextualVisual(!!cur.contextual_type);
-    return;
-  }
-
-  state.cases[state.idx].contextual_type = contextual_type;
-  showAlert('success', contextual_type ? 'Caso marcado como contextual' : 'Caso marcado como no contextual');
-}
 
 // ----------------- FUENTE + CONTEXTO -----------------
 async function updateFuenteAuto(supabaseClient) {
@@ -1953,7 +1897,6 @@ async function pj_insertFromJson(supabaseClient) {
     fechafuente: pj_parseDateFlexible(obj.fechafuente || obj.fechaFuente) || null,
     enlace: (obj.enlace || '').trim() || null,
     contextual_info: (obj.contextual_info || '').trim() || null,
-    contextual_type: obj.contextual_type === true || obj.contextualType === true || String(obj.contextual_type ?? obj.contextualType ?? '').toLowerCase() === 'true',
   };
 
   const { data, error } = await supabaseClient
@@ -2030,7 +1973,6 @@ function bindMonitor(supabaseClient) {
   qs('btnAdd')?.addEventListener('click', () => addCase(supabaseClient));
   qs('btnDelete')?.addEventListener('click', () => deleteCase(supabaseClient));
   qs('btnSave')?.addEventListener('click', () => saveFechaEvento(supabaseClient));
-  qs('contextualType')?.addEventListener('change', () => updateContextualTypeAuto(supabaseClient));
 
   qs('selectMacrotipo')?.addEventListener('change', () => updateMacrotipoAuto(supabaseClient));
 
