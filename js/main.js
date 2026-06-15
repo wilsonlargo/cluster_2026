@@ -41,6 +41,27 @@ const RPC_ANIOS = 'get_anios_casos_2026';
 const RPC_MACROTIPOS = 'get_macrotipos';
 const RPC_TERRITORIO = 'get_territorio_caso';
 
+const CASE_SELECT_COLUMNS = [
+  'id',
+  'fecha_evento',
+  'macrotipo',
+  'detalle',
+  'subtipos',
+  'pueblo',
+  'detalle_lugar',
+  'npersonas',
+  'nmujeres',
+  'nhombres',
+  'nmenores',
+  'macroactor',
+  'microactores',
+  'fuente',
+  'fechafuente',
+  'enlace',
+  'contextual_info',
+  'contextual_type',
+].join(', ');
+
 function qs(id) { return document.getElementById(id); }
 
 function el(tag, attrs = {}, children = []) {
@@ -69,6 +90,29 @@ function showAlert(type, msg) {
 
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+}
+
+function boolValue(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null) return false;
+  return ['true', '1', 'si', 'sí', 'yes'].includes(normLocal(value));
+}
+
+function setValue(id, value = '') {
+  const node = qs(id);
+  if (node) node.value = value ?? '';
+}
+
+function setChecked(id, checked, disabled = false) {
+  const node = qs(id);
+  if (!node) return;
+  node.checked = !!checked;
+  node.disabled = !!disabled;
+}
+
+function updateCurrentCasePatch(patch) {
+  if (state.idx < 0 || !state.cases[state.idx]) return;
+  Object.assign(state.cases[state.idx], patch);
 }
 
 function debounce(fn, wait = 600) {
@@ -281,16 +325,10 @@ function setBtnEnabled(id, enabled) {
 function applyContextualVisual(isContextual) {
   const active = !!isContextual;
   document.body.classList.toggle('contextual-active', active);
+  document.body.dataset.contextual = active ? 'true' : 'false';
 
-  const card = qs('caseFormCard');
-  if (card) {
-    card.classList.toggle('border-warning', active);
-  }
-
-  const contextualInfo = qs('contextualInfo');
-  if (contextualInfo) {
-    contextualInfo.classList.toggle('border-warning', active);
-  }
+  qs('caseFormCard')?.classList.toggle('border-warning', active);
+  qs('contextualInfo')?.classList.toggle('border-warning', active);
 }
 
 
@@ -345,10 +383,7 @@ function renderCurrentCase() {
     if (nMujeres) nMujeres.value = 0;
     if (nHombres) nHombres.value = 0;
     if (nMenores) nMenores.value = 0;
-    if (contextualTypeEl) {
-      contextualTypeEl.checked = false;
-      contextualTypeEl.disabled = true;
-    }
+    setChecked('contextualType', false, true);
     applyContextualVisual(false);
 
     renderSubtiposBadges({ subtipos: [] });
@@ -361,10 +396,10 @@ function renderCurrentCase() {
     return;
   }
 
-  if (info) info.textContent = `Caso ${state.idx + 1} / ${total}`;
-  info.className = "h4 fw-bold text-info"
-  if (info) info.onclick = () => {
-    console.log(`Caso ${state.idx + 1} / ${total} · ID ${cur.id}`)
+  if (info) {
+    info.textContent = `Caso ${state.idx + 1} / ${total}`;
+    info.className = 'h4 fw-bold text-info';
+    info.onclick = () => console.log(`Caso ${state.idx + 1} / ${total} · ID ${cur.id}`);
   }
   if (fecha) fecha.value = cur.fecha_evento ? String(cur.fecha_evento).slice(0, 10) : '';
   if (mtSel) mtSel.value = cur.macrotipo || '';
@@ -375,11 +410,8 @@ function renderCurrentCase() {
   if (fechaFuenteEl) fechaFuenteEl.value = cur.fechafuente ? String(cur.fechafuente).slice(0, 10) : '';
   if (enlaceFuenteEl) enlaceFuenteEl.value = cur.enlace || '';
   if (contextualEl) contextualEl.value = cur.contextual_info || '';
-  if (contextualTypeEl) {
-    contextualTypeEl.disabled = false;
-    contextualTypeEl.checked = !!cur.contextual_type;
-  }
-  applyContextualVisual(!!cur.contextual_type);
+  setChecked('contextualType', boolValue(cur.contextual_type), false);
+  applyContextualVisual(boolValue(cur.contextual_type));
   if (btnOpenFuente) {
     const url = (cur.enlace || '').trim();
     btnOpenFuente.disabled = !url;
@@ -938,7 +970,7 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
 
   let q = supabaseClient
     .from(TBL_CASOS)
-    .select('id, fecha_evento, macrotipo, detalle, subtipos, pueblo, detalle_lugar, npersonas, nmujeres, nhombres, nmenores, macroactor, microactores, fuente, fechafuente, enlace, contextual_info, contextual_type')
+    .select(CASE_SELECT_COLUMNS)
     .order('fecha_evento', { ascending: true });
 
   if (year) q = q.gte('fecha_evento', `${year}-01-01`).lte('fecha_evento', `${year}-12-31`);
@@ -960,7 +992,7 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
     fechafuente: r.fechafuente ?? null,
     enlace: r.enlace ?? null,
     contextual_info: r.contextual_info ?? null,
-    contextual_type: r.contextual_type === true,
+    contextual_type: boolValue(r.contextual_type),
     npersonas: Number(r.npersonas ?? 0),
     nmujeres: Number(r.nmujeres ?? 0),
     nhombres: Number(r.nhombres ?? 0),
@@ -1061,6 +1093,7 @@ async function saveFechaEvento(supabaseClient) {
     showAlert('danger', error.message || 'No se pudo guardar');
     return;
   }
+  updateCurrentCasePatch(payload);
   showAlert('success', 'Guardado');
   await loadCasesForYear(state.year, supabaseClient, { focusId: cur.id, goLast: false });
 }
@@ -1071,7 +1104,16 @@ async function addCase(supabaseClient) {
 
   const { data, error } = await supabaseClient
     .from(TBL_CASOS)
-    .insert({ fecha_evento: defaultDate, npersonas: 0, nmujeres: 0, nhombres: 0, nmenores: 0, macroactor: null, microactores: [], contextual_type: false })
+    .insert({
+      fecha_evento: defaultDate,
+      npersonas: 0,
+      nmujeres: 0,
+      nhombres: 0,
+      nmenores: 0,
+      macroactor: null,
+      microactores: [],
+      contextual_type: false,
+    })
     .select('id')
     .single();
 
@@ -1274,6 +1316,13 @@ async function updateContextualTypeAuto(supabaseClient) {
   if (!cur || !input) return;
 
   const contextual_type = !!input.checked;
+  const previous = boolValue(cur.contextual_type);
+  if (contextual_type === previous) {
+    applyContextualVisual(previous);
+    return;
+  }
+
+  input.disabled = true;
   applyContextualVisual(contextual_type);
 
   const { error } = await supabaseClient
@@ -1281,15 +1330,17 @@ async function updateContextualTypeAuto(supabaseClient) {
     .update({ contextual_type })
     .eq('id', cur.id);
 
+  input.disabled = false;
+
   if (error) {
     console.error('update contextual_type', error);
     showAlert('danger', error.message || 'No se pudo actualizar contextual_type');
-    input.checked = !!cur.contextual_type;
-    applyContextualVisual(!!cur.contextual_type);
+    setChecked('contextualType', previous, false);
+    applyContextualVisual(previous);
     return;
   }
 
-  state.cases[state.idx].contextual_type = contextual_type;
+  updateCurrentCasePatch({ contextual_type });
   showAlert('success', contextual_type ? 'Caso marcado como contextual' : 'Caso marcado como no contextual');
 }
 
@@ -1313,9 +1364,7 @@ async function updateFuenteAuto(supabaseClient) {
     return;
   }
 
-  state.cases[state.idx].fuente = fuente;
-  state.cases[state.idx].fechafuente = fechafuente;
-  state.cases[state.idx].enlace = enlace;
+  updateCurrentCasePatch({ fuente, fechafuente, enlace });
 
   const btn = qs('btnOpenFuente');
   if (btn) btn.disabled = !((enlace || '').trim());
@@ -1338,7 +1387,7 @@ async function updateContextualInfoAuto(supabaseClient) {
     return;
   }
 
-  state.cases[state.idx].contextual_info = contextual_info;
+  updateCurrentCasePatch({ contextual_info });
 }
 
 function openFuenteInNewTab() {
@@ -1953,7 +2002,7 @@ async function pj_insertFromJson(supabaseClient) {
     fechafuente: pj_parseDateFlexible(obj.fechafuente || obj.fechaFuente) || null,
     enlace: (obj.enlace || '').trim() || null,
     contextual_info: (obj.contextual_info || '').trim() || null,
-    contextual_type: obj.contextual_type === true || obj.contextualType === true || String(obj.contextual_type ?? obj.contextualType ?? '').toLowerCase() === 'true',
+    contextual_type: boolValue(obj.contextual_type ?? obj.contextualType),
   };
 
   const { data, error } = await supabaseClient
@@ -2010,6 +2059,23 @@ async function pj_insertFromJson(supabaseClient) {
 
 
 
+async function logoutToIndex(supabaseClient) {
+  const btn = qs('btnLogoutToIndex');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="d-none d-md-inline">Saliendo…</span>';
+  }
+
+  try {
+    await supabaseClient?.auth?.signOut?.();
+  } catch (error) {
+    console.error('logoutToIndex', error);
+  } finally {
+    window.location.href = INDEX_PAGE;
+  }
+}
+
+
 // ----------------- BINDINGS -----------------
 function bindMonitor(supabaseClient) {
   if (bindDone) return;
@@ -2030,6 +2096,7 @@ function bindMonitor(supabaseClient) {
   qs('btnAdd')?.addEventListener('click', () => addCase(supabaseClient));
   qs('btnDelete')?.addEventListener('click', () => deleteCase(supabaseClient));
   qs('btnSave')?.addEventListener('click', () => saveFechaEvento(supabaseClient));
+  qs('btnLogoutToIndex')?.addEventListener('click', () => logoutToIndex(supabaseClient));
   qs('contextualType')?.addEventListener('change', () => updateContextualTypeAuto(supabaseClient));
 
   qs('selectMacrotipo')?.addEventListener('change', () => updateMacrotipoAuto(supabaseClient));
@@ -2120,7 +2187,7 @@ function bindMonitor(supabaseClient) {
       return;
     }
 
-    Object.assign(state.cases[state.idx], payload);
+    updateCurrentCasePatch(payload);
   }, 650);
 
   ['npersonas', 'nmujeres', 'nhombres', 'nmenores'].forEach(id => {
@@ -2137,10 +2204,8 @@ function bindMonitor(supabaseClient) {
   }
   qs('btnPaste')?.addEventListener('click', (e) => {
     e.preventDefault();
-    console.log('CLICK PEGAR OK');
-    pj_openModal();   // esta función debe existir
+    pj_openModal();
   });
-  qs('btnPaste')?.addEventListener('click', (e) => { e.preventDefault(); pj_openModal(); });
   qs('btnReadClipboardJson')?.addEventListener('click', () => pj_readClipboard());
   qs('pasteJsonText')?.addEventListener('input', () => pj_onChange());
   qs('btnInsertJsonCase')?.addEventListener('click', () => pj_insertFromJson(supabaseClient));
