@@ -1242,6 +1242,10 @@ async function saveFechaEvento(supabaseClient) {
 
   const mtSel = qs('selectMacrotipo');
   const det = qs('detalle');
+  const fuente = (qs('fuente')?.value || '').trim() || null;
+  const fechafuente = qs('fechaFuente') ? (qs('fechaFuente').value || null) : null;
+  const enlace = (qs('enlaceFuente')?.value || '').trim() || null;
+  const contextual_info = (qs('contextualInfo')?.value || '').trim() || null;
 
   const payload = {
     fecha_evento: newDate,
@@ -1249,6 +1253,10 @@ async function saveFechaEvento(supabaseClient) {
     detalle: (det ? (det.value.trim() || null) : (cur.detalle || null)),
     subtipos: Array.isArray(cur.subtipos) ? cur.subtipos : [],
     contextual_type: !!qs('contextualType')?.checked,
+    contextual_info,
+    fuente,
+    fechafuente,
+    enlace,
     npersonas: readInt('npersonas'),
     nmujeres: readInt('nmujeres'),
     nhombres: readInt('nhombres'),
@@ -1262,8 +1270,41 @@ async function saveFechaEvento(supabaseClient) {
     return;
   }
   updateCurrentCasePatch(payload);
+  const btn = qs('btnOpenFuente');
+  if (btn) btn.disabled = !((enlace || '').trim());
   showAlert('success', 'Guardado');
   await loadCasesForYear(state.year, supabaseClient, { focusId: cur.id, goLast: false });
+}
+
+async function updateFechaEventoAuto(supabaseClient, expectedId = null) {
+  const cur = getCurrentCase();
+  const input = qs('fechaEvento');
+  if (!cur || !input) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
+
+  const fecha_evento = input.value || null;
+  if (!fecha_evento) {
+    showAlert('warning', 'Define fecha_evento');
+    return;
+  }
+
+  const oldVal = cur.fecha_evento ? String(cur.fecha_evento).slice(0, 10) : '';
+  if (fecha_evento === oldVal) return;
+
+  const { error } = await supabaseClient
+    .from(TBL_CASOS)
+    .update({ fecha_evento })
+    .eq('id', cur.id);
+
+  if (error) {
+    console.error('updateFechaEventoAuto', error);
+    showAlert('danger', error.message || 'No se pudo guardar fecha_evento');
+    input.value = oldVal;
+    return;
+  }
+
+  updateCurrentCasePatch({ fecha_evento });
+  showAlert('success', 'fecha_evento actualizada');
 }
 
 async function addCase(supabaseClient) {
@@ -1523,13 +1564,27 @@ async function updateContextualTypeAuto(supabaseClient) {
 }
 
 // ----------------- FUENTE + CONTEXTO -----------------
-async function updateFuenteAuto(supabaseClient) {
+async function updateFuenteAuto(supabaseClient, expectedId = null) {
   const cur = getCurrentCase();
   if (!cur) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
 
   const fuente = (qs('fuente')?.value || '').trim() || null;
   const fechafuente = qs('fechaFuente') ? (qs('fechaFuente').value || null) : null;
   const enlace = (qs('enlaceFuente')?.value || '').trim() || null;
+
+  const previous = {
+    fuente: cur.fuente ?? null,
+    fechafuente: cur.fechafuente ?? null,
+    enlace: cur.enlace ?? null,
+  };
+
+  const same =
+    (previous.fuente || null) === fuente &&
+    (previous.fechafuente || null) === fechafuente &&
+    (previous.enlace || null) === enlace;
+
+  if (same) return;
 
   const { error } = await supabaseClient
     .from(TBL_CASOS)
@@ -1539,6 +1594,9 @@ async function updateFuenteAuto(supabaseClient) {
   if (error) {
     console.error('updateFuenteAuto', error);
     showAlert('danger', error.message || 'No se pudo guardar fuente');
+    setValue('fuente', previous.fuente || '');
+    setValue('fechaFuente', previous.fechafuente ? String(previous.fechafuente).slice(0, 10) : '');
+    setValue('enlaceFuente', previous.enlace || '');
     return;
   }
 
@@ -1548,11 +1606,14 @@ async function updateFuenteAuto(supabaseClient) {
   if (btn) btn.disabled = !((enlace || '').trim());
 }
 
-async function updateContextualInfoAuto(supabaseClient) {
+async function updateContextualInfoAuto(supabaseClient, expectedId = null) {
   const cur = getCurrentCase();
   if (!cur) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
 
   const contextual_info = (qs('contextualInfo')?.value || '').trim() || null;
+  const oldVal = cur.contextual_info ?? null;
+  if ((oldVal || null) === contextual_info) return;
 
   const { error } = await supabaseClient
     .from(TBL_CASOS)
@@ -1562,6 +1623,7 @@ async function updateContextualInfoAuto(supabaseClient) {
   if (error) {
     console.error('updateContextualInfoAuto', error);
     showAlert('danger', error.message || 'No se pudo guardar contextual_info');
+    setValue('contextualInfo', oldVal || '');
     return;
   }
 
@@ -2282,6 +2344,17 @@ function bindMonitor(supabaseClient) {
   qs('btnAdd')?.addEventListener('click', () => addCase(supabaseClient));
   qs('btnDelete')?.addEventListener('click', () => deleteCase(supabaseClient));
   qs('btnSave')?.addEventListener('click', () => saveFechaEvento(supabaseClient));
+
+  qs('fechaEvento')?.addEventListener('change', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFechaEventoAuto(supabaseClient, cur.id);
+  });
+  qs('fechaEvento')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFechaEventoAuto(supabaseClient, cur.id);
+  });
   qs('btnLogoutToIndex')?.addEventListener('click', () => logoutToIndex(supabaseClient));
   qs('contextualType')?.addEventListener('change', () => updateContextualTypeAuto(supabaseClient));
 
@@ -2379,6 +2452,51 @@ function bindMonitor(supabaseClient) {
   ['npersonas', 'nmujeres', 'nhombres', 'nmenores'].forEach(id => {
     qs(id)?.addEventListener('input', savePoblacion);
   });
+
+  // Fuente autosave
+  const saveFuente = debounce(async (expectedId) => {
+    await updateFuenteAuto(supabaseClient, expectedId);
+  }, 650);
+
+  ['fuente', 'enlaceFuente'].forEach(id => {
+    qs(id)?.addEventListener('input', () => {
+      const cur = getCurrentCase();
+      if (!cur) return;
+      saveFuente(cur.id);
+    });
+    qs(id)?.addEventListener('blur', () => {
+      const cur = getCurrentCase();
+      if (!cur) return;
+      updateFuenteAuto(supabaseClient, cur.id);
+    });
+  });
+
+  qs('fechaFuente')?.addEventListener('change', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFuenteAuto(supabaseClient, cur.id);
+  });
+  qs('fechaFuente')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFuenteAuto(supabaseClient, cur.id);
+  });
+
+  // Información contextual autosave
+  const saveContextualInfo = debounce(async (expectedId) => {
+    await updateContextualInfoAuto(supabaseClient, expectedId);
+  }, 700);
+  qs('contextualInfo')?.addEventListener('input', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    saveContextualInfo(cur.id);
+  });
+  qs('contextualInfo')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateContextualInfoAuto(supabaseClient, cur.id);
+  });
+
   // FORCE btnOpenFuente binding (abre enlace en nueva pestaña)
   const _btnFuente = qs('btnOpenFuente');
   if (_btnFuente) {
