@@ -9,7 +9,7 @@
 */
 
 // Se crea un objeto global para que sigindex.html pueda leerlo después de cargar este archivo.
-window.SIG_CONFIG_VERSION = '20260615-directo-casos2026-v3';
+window.SIG_CONFIG_VERSION = '20260615-sig-panel-filtros-blanco-v2';
 window.SIG_CONFIG = {
   // Configuración inicial del mapa: centro aproximado de Colombia y zoom nacional.
   mapa: {
@@ -23,28 +23,19 @@ window.SIG_CONFIG = {
     ruedaZoomSensibilidad: 180
   },
 
-  // Configuración de Supabase para el módulo SIG.
-  // Versión: 20260615-directo-casos2026-v3
-  // Usa la misma anon public key o publishable key que ya funciona en index.html.
+
+  // Conexión pública controlada a Supabase para reconstrucción del módulo SIG.
+  // No usar usuario, contraseña ni service_role en archivos del navegador.
+  // Desde este paso el SIG consulta la vista pública controlada, no la tabla base casos_2026.
   supabase: {
     url: 'https://sjvuxlcgeswapbphsqkv.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE',
-    // Versión directa: el SIG consulta las tablas base de Supabase.
-    // casos_2026 se usa para casos; caso_municipio_2026 para puntos/coordenadas.
-    tablaCasosLite: 'casos_2026',
-    tablaPuntosLite: 'caso_municipio_2026',
-    tablaCasosDetalle: 'casos_2026',
-    tablaOpcionesFiltros: null,
-    // Se conservan estos nombres solo por compatibilidad con versiones anteriores.
-    tablaCasosPublica: 'casos_2026',
-    tablaCasosAvanzada: 'casos_2026',
-    tamanoPagina: 500,
-    maxPaginas: 20,
-    timeoutConsultaMs: 45000,
-    timeoutOpcionesMs: 12000
+    clavePublica: 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg',
+    vistaCasos: 'sig_casos_public_2026',
+    timeoutConsultaMs: 15000,
+    maxFilasConteoCasosUnicos: 5000
   },
 
-  // Estilo inicial de los circleMarker de casos consultados desde Supabase.
+  // Estilo inicial reservado para los circleMarker de casos cuando se reconstruya el módulo de datos.
   casos: {
     pane: 'pane9',
     zoomMaximoAjuste: 9,
@@ -59,7 +50,7 @@ window.SIG_CONFIG = {
   },
 
   // Configuración del mapa de calor departamental. Se alimenta desde los registros
-  // filtrados en el panel o desde los resultados de la consola avanzada.
+  // filtrados en el panel.
   mapaCalorDepartamentos: {
     propiedadNombre: 'DPTO_CNMBR',
     metricaInicial: 'casos',
@@ -162,4 +153,3 @@ window.SIG_CONFIG = {
   ]
 };
 
-console.info('SIG config cargada: 20260615-directo-casos2026-v3 · fuente directa casos_2026');

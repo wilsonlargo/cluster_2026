@@ -154,6 +154,9 @@ const state = {
   idx: -1,
   departamentos: [],
   deptoMap: new Map(),
+  deptoNameMap: new Map(),
+  municipiosByValue: new Map(),
+  municipiosFullByName: null,
   viewIdxs: [],
   territorioByCaso: new Map(),
   muniDeptoMap: null,
@@ -791,16 +794,60 @@ async function refreshTerritorioRPC(supabaseClient) {
     return;
   }
 
-  const { data, error } = await supabaseClient.rpc(RPC_TERRITORIO, { p_caso_id: cur.id });
+  const { data, error } = await supabaseClient
+    .from(TBL_CASO_MUNI)
+    .select(`${COL_MUNICIPIO_TXT}, lat, lng`)
+    .eq(COL_CASO_ID, cur.id);
+
   if (error) {
-    console.error(RPC_TERRITORIO, error);
+    console.error('refreshTerritorio local', error);
     showAlert('danger', error.message || 'No se pudo cargar territorio');
     renderTerritorioUI([], [], [], supabaseClient);
     return;
   }
 
-  const row = Array.isArray(data) ? data[0] : data;
-  renderTerritorioUI(row?.departamentos || [], row?.macroregiones || [], row?.lugares || [], supabaseClient);
+  const muniIndex = await ensureMunicipiosFullIndex(supabaseClient);
+  const deptos = [];
+  const macros = [];
+  const deptoSeen = new Set();
+  const macroSeen = new Set();
+
+  const lugares = (data || []).map(r => {
+    const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
+    const muniRow = muniIndex.get(normLocal(municipio));
+    let depto = muniRow?.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
+    const muniDepTxt = pickMunicipioDepartamento(muniRow);
+    if (!depto && muniDepTxt) depto = getDeptoByAny(muniDepTxt);
+
+    const departamento = depto?.departamento || pickMunicipioDepartamento(muniRow) || '—';
+    const macroregion = depto?.macroregion || null;
+
+    if (departamento && departamento !== '—') {
+      const k = normLocal(departamento);
+      if (!deptoSeen.has(k)) {
+        deptoSeen.add(k);
+        deptos.push(departamento);
+      }
+    }
+
+    if (macroregion) {
+      const k = normLocal(macroregion);
+      if (!macroSeen.has(k)) {
+        macroSeen.add(k);
+        macros.push(macroregion);
+      }
+    }
+
+    return {
+      municipio,
+      departamento,
+      macroregion,
+      lat: r.lat ?? muniRow?.lat ?? null,
+      lng: r.lng ?? muniRow?.lng ?? null,
+    };
+  }).filter(x => x.municipio);
+
+  renderTerritorioUI(deptos, macros, lugares, supabaseClient);
 }
 
 // ----------------- LOADERS -----------------
@@ -906,61 +953,182 @@ async function loadPueblosCatalog(sel, supabaseClient) {
   return clean;
 }
 
+
+function pickMunicipioNombre(row) {
+  if (!row || typeof row !== 'object') return '';
+  return String(row.nombre ?? row.municipio ?? row.name ?? '').trim();
+}
+
+function pickMunicipioDepartamento(row) {
+  if (!row || typeof row !== 'object') return '';
+  // Tu esquema actual usa public.municipios.departamentos (plural).
+  // Dejamos también departamento como respaldo por si en otra versión cambias el nombre.
+  return String(row.departamentos ?? row.departamento ?? row.departamento_nombre ?? '').trim();
+}
+
+function getDeptoByAny(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  return state.deptoMap.get(raw) || state.deptoNameMap.get(normLocal(raw)) || null;
+}
+
+async function fetchMunicipiosRows(supabaseClient, departamento_id) {
+  const depto = getDeptoByAny(departamento_id);
+  const deptoName = String(depto?.departamento || '').trim();
+  const rowsByKey = new Map();
+
+  const addRows = (rows) => {
+    (rows || []).forEach(r => {
+      const nombre = pickMunicipioNombre(r);
+      if (!nombre) return;
+      const depId = String(r.departamento_id || '').trim();
+      const depTxt = pickMunicipioDepartamento(r);
+      const matchesById = departamento_id && depId && String(depId) === String(departamento_id);
+      const matchesByText = deptoName && depTxt && normLocal(depTxt) === normLocal(deptoName);
+      if (matchesById || matchesByText) {
+        const key = String(r.id || `${nombre}__${depId || depTxt}`).trim();
+        rowsByKey.set(key, r);
+      }
+    });
+  };
+
+  // Intento 1: relación normal por departamento_id.
+  if (departamento_id) {
+    const res = await supabaseClient
+      .from(TBL_MUNIS)
+      .select('*')
+      .eq('departamento_id', departamento_id);
+    if (!res.error) addRows(res.data || []);
+    else console.warn('municipios por departamento_id falló; se intenta por texto:', res.error.message || res.error);
+  }
+
+  // Intento 2: relación por texto del departamento.
+  // IMPORTANTE: tu esquema actual usa public.municipios.departamentos (plural).
+  // No consultar "departamento" porque esa columna NO existe y produce 400 Bad Request.
+  if (!rowsByKey.size && deptoName) {
+    const res = await supabaseClient
+      .from(TBL_MUNIS)
+      .select('*')
+      .ilike('departamentos', deptoName);
+
+    if (!res.error) {
+      addRows(res.data || []);
+    } else {
+      console.warn('municipios por departamentos falló; se intenta carga general:', res.error.message || res.error);
+    }
+  }
+
+  // Intento 3: carga general y filtro local normalizado.
+  if (!rowsByKey.size && (departamento_id || deptoName)) {
+    const res = await supabaseClient
+      .from(TBL_MUNIS)
+      .select('*')
+      .limit(5000);
+    if (!res.error) addRows(res.data || []);
+    else throw res.error;
+  }
+
+  return Array.from(rowsByKey.values()).sort((a, b) =>
+    pickMunicipioNombre(a).localeCompare(pickMunicipioNombre(b), 'es')
+  );
+}
+
+async function ensureMunicipiosFullIndex(supabaseClient) {
+  if (state.municipiosFullByName) return state.municipiosFullByName;
+
+  const map = new Map();
+  const { data, error } = await supabaseClient
+    .from(TBL_MUNIS)
+    .select('*')
+    .limit(5000);
+
+  if (error) {
+    console.error('ensureMunicipiosFullIndex', error);
+    state.municipiosFullByName = map;
+    return map;
+  }
+
+  (data || []).forEach(r => {
+    const nombre = pickMunicipioNombre(r);
+    if (!nombre) return;
+    const k = normLocal(nombre);
+    if (!map.has(k)) map.set(k, r);
+  });
+
+  state.municipiosFullByName = map;
+  return map;
+}
+
 async function loadDepartamentosCatalog(sel, supabaseClient) {
   if (!sel) return;
   sel.innerHTML = `<option value="">Cargando…</option>`;
+
   const { data, error } = await supabaseClient
     .from(TBL_DEPTOS)
     .select('id, departamento, macroregion')
     .order('departamento', { ascending: true });
+
   if (error) {
     console.error('loadDepartamentosCatalog', error);
     showAlert('danger', error.message || 'Error departamentos');
     sel.innerHTML = `<option value="">Error</option>`;
     return;
   }
+
   state.departamentos = data || [];
   state.deptoMap = new Map((state.departamentos || []).map(d => [String(d.id), d]));
+  state.deptoNameMap = new Map((state.departamentos || []).map(d => [normLocal(d.departamento), d]));
+
   sel.innerHTML = '';
   sel.appendChild(new Option('— Departamento —', ''));
   for (const d of state.departamentos) sel.appendChild(new Option(d.departamento, d.id));
-  if (state.departamentos.length) sel.value = state.departamentos[0].id;
+  sel.value = '';
   updateDeptoMacroInfo(sel.value);
 }
 
 function updateDeptoMacroInfo(departamento_id) {
+  const d = getDeptoByAny(departamento_id);
   const elInfo = qs('deptoMacroInfo');
-  if (!elInfo) return;
-  const d = state.deptoMap.get(String(departamento_id));
-  elInfo.textContent = 'Macroregión (depto): ' + (d?.macroregion || '—');
+  if (elInfo) elInfo.textContent = 'Macroregión (depto): ' + (d?.macroregion || '—');
 }
 
 async function loadMunicipiosCatalog(sel, supabaseClient, departamento_id) {
   if (!sel) return;
+  state.municipiosByValue = new Map();
+
   if (!departamento_id) {
     sel.innerHTML = `<option value="">Selecciona un departamento</option>`;
     return;
   }
+
   sel.innerHTML = `<option value="">Cargando…</option>`;
-  const { data, error } = await supabaseClient
-    .from(TBL_MUNIS)
-    .select('id, municipio, departamento_id')
-    .eq('departamento_id', departamento_id)
-    .order('municipio', { ascending: true });
-  if (error) {
+
+  try {
+    const rows = await fetchMunicipiosRows(supabaseClient, departamento_id);
+
+    sel.innerHTML = '';
+    sel.appendChild(new Option('— Municipio —', ''));
+
+    if (!rows.length) {
+      sel.appendChild(new Option('(Sin municipios para este departamento)', ''));
+      const d = getDeptoByAny(departamento_id);
+      showAlert('warning', `No se encontraron municipios para ${d?.departamento || 'el departamento seleccionado'}. Revisa que public.municipios.departamento_id tenga el uuid correcto o que public.municipios.departamentos coincida con el nombre del departamento.`);
+      return;
+    }
+
+    for (const m of rows) {
+      const nombre = pickMunicipioNombre(m);
+      const value = String(m.id || `${nombre}__${m.departamento_id || pickMunicipioDepartamento(m) || ''}`).trim();
+      state.municipiosByValue.set(value, m);
+      sel.appendChild(new Option(nombre, value));
+    }
+
+    sel.value = '';
+  } catch (error) {
     console.error('loadMunicipiosCatalog', error);
     showAlert('danger', error.message || 'Error cargando municipios');
     sel.innerHTML = `<option value="">Error</option>`;
-    return;
   }
-  sel.innerHTML = '';
-  sel.appendChild(new Option('— Municipio —', ''));
-  if (!data?.length) {
-    sel.appendChild(new Option('(Sin municipios)', ''));
-    return;
-  }
-  for (const m of data) sel.appendChild(new Option(m.municipio, m.id));
-  sel.value = '';
 }
 
 async function loadCasesForYear(year, supabaseClient, opts = {}) {
@@ -1226,36 +1394,43 @@ async function addMunicipioToCaso(supabaseClient) {
   const selMpio = qs('selectMunicipio');
   if (!cur || !selMpio) return;
 
-  const municipioId = (selMpio.value || '').trim();
-  if (!municipioId) {
+  const selectedValue = (selMpio.value || '').trim();
+  if (!selectedValue) {
     showAlert('warning', 'Selecciona un municipio');
     return;
   }
 
-  // Traer datos del municipio desde public.municipios
-  const { data: muniData, error: muniError } = await supabaseClient
-    .from(TBL_MUNIS)
-    .select('municipio, lat, lng')
-    .eq('id', municipioId)
-    .single();
+  let muniData = state.municipiosByValue.get(selectedValue) || null;
 
-  if (muniError) {
-    console.error('Error obteniendo municipio:', muniError);
-    showAlert('danger', muniError.message || 'No se pudo obtener municipio');
+  // Respaldo por si se perdió el mapa local del select.
+  if (!muniData) {
+    const res = await supabaseClient
+      .from(TBL_MUNIS)
+      .select('*')
+      .eq('id', selectedValue)
+      .maybeSingle();
+    if (!res.error && res.data) muniData = res.data;
+  }
+
+  if (!muniData) {
+    showAlert('danger', 'No se pudo leer el municipio seleccionado. Vuelve a seleccionar el departamento.');
     return;
   }
 
-  const municipioTxt = String(muniData?.municipio || '').trim();
+  const municipioTxt = pickMunicipioNombre(muniData);
   if (!municipioTxt) {
     showAlert('danger', 'El municipio seleccionado no trae nombre');
     return;
   }
 
+  const latNum = Number(muniData?.lat);
+  const lngNum = Number(muniData?.lng);
+
   const payload = {
     [COL_CASO_ID]: cur.id,
     [COL_MUNICIPIO_TXT]: municipioTxt,
-    lat: muniData?.lat ?? null,
-    lng: muniData?.lng ?? null,
+    lat: Number.isFinite(latNum) ? latNum : null,
+    lng: Number.isFinite(lngNum) ? lngNum : null,
   };
 
   const { error } = await supabaseClient
@@ -1275,7 +1450,10 @@ async function addMunicipioToCaso(supabaseClient) {
 
   showAlert('success', 'Municipio agregado');
   selMpio.value = '';
+  state.municipiosFullByName = null;
+  state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
+  await buildTerritorioIndexForYear(supabaseClient);
 }
 
 async function removeMunicipioFromCaso(supabaseClient, municipioTxt) {
@@ -1640,13 +1818,21 @@ async function ensureMuniDeptoMap(supabaseClient) {
   try {
     const { data, error } = await supabaseClient
       .from(TBL_MUNIS)
-      .select('municipio, departamento_id')
+      .select('*')
       .limit(5000);
 
     if (!error) {
       (data || []).forEach(r => {
-        const k = String(r.municipio || '').trim().toLowerCase();
-        if (k) map.set(k, r.departamento_id || null);
+        const nombre = pickMunicipioNombre(r);
+        const k = normLocal(nombre);
+        if (!k) return;
+        let dep = r.departamento_id || null;
+        const depTxt = pickMunicipioDepartamento(r);
+        if (!dep && depTxt) {
+          const d = getDeptoByAny(depTxt);
+          dep = d?.id || null;
+        }
+        if (dep) map.set(k, String(dep));
       });
     } else {
       console.error('ensureMuniDeptoMap', error);
@@ -1690,7 +1876,7 @@ async function buildTerritorioIndexForYear(supabaseClient) {
       }
       if (muni) {
         entry.municipios.push(muni);
-        const dep = state.muniDeptoMap?.get(muni.toLowerCase()) || null;
+        const dep = state.muniDeptoMap?.get(normLocal(muni)) || null;
         if (dep) entry.depto_ids.add(String(dep));
       }
     });
