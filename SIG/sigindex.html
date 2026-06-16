@@ -218,6 +218,21 @@
       background: rgba(255, 193, 7, .08);
     }
 
+
+    .filter-stat.stat-compact {
+      padding: .55rem .6rem;
+      border-radius: .85rem;
+      min-height: 58px;
+    }
+
+    .filter-stat.stat-compact .number {
+      font-size: .98rem;
+    }
+
+    .filter-stat.stat-compact .label {
+      font-size: .68rem;
+    }
+
     .population-note {
       font-size: .74rem;
       color: var(--sig-muted);
@@ -273,6 +288,70 @@
       padding: .6rem .7rem;
       font-size: .8rem;
       color: var(--sig-muted);
+    }
+
+
+    .sig-legend-filtros {
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, .18);
+      padding: .75rem .8rem;
+      min-width: 240px;
+      max-width: min(320px, 82vw);
+      max-height: 42vh;
+      overflow: auto;
+      color: #0f172a;
+      font-size: .78rem;
+    }
+
+    .sig-legend-filtros-title {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-weight: 700;
+      margin-bottom: .55rem;
+    }
+
+    .sig-legend-filtros-list {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    .sig-legend-filtros-item {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: .5rem;
+      align-items: start;
+      border-top: 1px solid rgba(15, 23, 42, .08);
+      padding-top: .5rem;
+    }
+
+    .sig-legend-filtros-item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .sig-legend-color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, .35);
+      margin-top: .15rem;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, .9);
+    }
+
+    .sig-legend-filtro-texto {
+      font-weight: 650;
+      line-height: 1.25;
+    }
+
+    .sig-legend-filtro-meta {
+      color: var(--sig-muted);
+      font-size: .72rem;
+      line-height: 1.25;
+      margin-top: .15rem;
     }
 
     @media (max-width: 576px) {
@@ -442,24 +521,70 @@
       };
     }
 
-    // Crea contenido de popup básico para atributos de GeoJSON.
-    function crearPopupDesdePropiedades(feature, nombreCapa) {
-      const popupDepartamento = window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, nombreCapa);
-      if (popupDepartamento) return popupDepartamento;
+    // Obtiene una propiedad por nombre exacto o equivalente, sin depender de mayúsculas/minúsculas.
+    function obtenerPropiedadFlexible(props, campoSolicitado) {
+      if (!props || !campoSolicitado) return undefined;
+      const candidatos = Array.isArray(campoSolicitado) ? campoSolicitado : [campoSolicitado];
+      const entradas = Object.entries(props);
 
+      for (const campo of candidatos) {
+        if (Object.prototype.hasOwnProperty.call(props, campo)) return props[campo];
+      }
+
+      for (const campo of candidatos) {
+        const buscado = String(campo).trim().toLowerCase();
+        const encontrado = entradas.find(([clave]) => String(clave).trim().toLowerCase() === buscado);
+        if (encontrado) return encontrado[1];
+      }
+
+      for (const campo of candidatos) {
+        const buscado = normTxtLocal(campo).replace(/[^a-z0-9]/g, '');
+        const encontrado = entradas.find(([clave]) => normTxtLocal(clave).replace(/[^a-z0-9]/g, '') === buscado);
+        if (encontrado) return encontrado[1];
+      }
+
+      return undefined;
+    }
+
+    function valorVisible(valor) {
+      return valor !== null && valor !== undefined && String(valor).trim() !== '';
+    }
+
+    // Crea contenido de popup para atributos de GeoJSON usando la configuración de cada layer.
+    function crearPopupDesdePropiedades(feature, capaConfig) {
       const props = feature?.properties || {};
-      const filas = Object.entries(props).slice(0, 8).map(([clave, valor]) => {
-        return `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`;
-      }).join('');
+      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
+      const camposConfigurados = Array.isArray(capaConfig?.popupCampos) ? capaConfig.popupCampos : [];
 
-      return `<div style="min-width:220px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${filas ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>` : '<div class="text-muted small">Sin atributos visibles.</div>'}</div>`;
+      let filas = '';
+
+      if (camposConfigurados.length) {
+        filas = camposConfigurados.map(item => {
+          const valor = obtenerPropiedadFlexible(props, item.campos || item.campo);
+          if (!valorVisible(valor)) return '';
+          return `<tr><th class="text-muted pe-2">${escapeHtml(item.etiqueta || item.campo)}</th><td>${escapeHtml(valor)}</td></tr>`;
+        }).join('');
+      } else {
+        const popupDepartamento = window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, nombreCapa);
+        if (popupDepartamento) return popupDepartamento;
+
+        filas = Object.entries(props).slice(0, 8).map(([clave, valor]) => {
+          return `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`;
+        }).join('');
+      }
+
+      const cuerpo = filas
+        ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`
+        : '<div class="text-muted small">Sin información en los campos configurados.</div>';
+
+      return `<div style="min-width:220px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${cuerpo}</div>`;
     }
 
     // Abre un popup Leaflet real sobre el punto exacto del clic.
     // Para departamentos usamos L.popup().openOn(mapa), no solo bindPopup(),
     // porque los polígonos multiparte pueden fallar al calcular un centro automático.
     function abrirPopupLeaflet(feature, layer, capaConfig, event) {
-      const html = crearPopupDesdePropiedades(feature, capaConfig.nombre);
+      const html = crearPopupDesdePropiedades(feature, capaConfig);
       const latlng = event?.latlng
         || (layer?.getBounds ? layer.getBounds().getCenter() : SIG_STATE.mapa.getCenter());
 
@@ -469,6 +594,7 @@
       }
 
       L.popup({
+        pane: 'panePopupsTop',
         maxWidth: 460,
         minWidth: 300,
         autoPan: true,
@@ -484,15 +610,15 @@
     // Sube temporalmente la capa de departamentos por encima de municipios/resguardos
     // para que el clic sobre polígonos departamentales no quede capturado por otra capa.
     function asegurarDepartamentosClicables() {
-      const paneDeptos = SIG_STATE.mapa?.getPane('pane8') || SIG_STATE.mapa?.getPane('pane3');
-      const paneCasos = SIG_STATE.mapa?.getPane('pane9');
-      if (paneDeptos) {
-        paneDeptos.style.zIndex = '590';
-        paneDeptos.style.pointerEvents = 'auto';
-      }
+      const paneCasos = SIG_STATE.mapa?.getPane('paneCasosTop') || SIG_STATE.mapa?.getPane('pane9');
+      const panePopups = SIG_STATE.mapa?.getPane('panePopupsTop') || SIG_STATE.mapa?.createPane?.('panePopupsTop');
       if (paneCasos) {
-        paneCasos.style.zIndex = '620';
+        paneCasos.style.zIndex = '1000';
         paneCasos.style.pointerEvents = 'auto';
+      }
+      if (panePopups) {
+        panePopups.style.zIndex = '1300';
+        panePopups.style.pointerEvents = 'auto';
       }
     }
 
@@ -547,8 +673,9 @@
     function abrirPopupDepartamentoFallback(event) {
       const capaConfig = SIG_CONFIG.capas.find(capa => capa.id === 'departamentos');
       if (!capaConfig || !SIG_STATE.capasPorId.has('departamentos')) return;
-      // Evita duplicar cuando el clic directo del polígono sí funcionó.
-      if (Date.now() - Number(SIG_STATE.ultimoClickDepartamentoMs || 0) < 180) return;
+      // Evita duplicar cuando el clic directo de cualquier capa sí funcionó.
+      if (Date.now() - Number(SIG_STATE.ultimoClickCapaMs || 0) < 220) return;
+      if (Date.now() - Number(SIG_STATE.ultimoClickDepartamentoMs || 0) < 220) return;
       const layer = buscarDepartamentoEnLatLng(event.latlng);
       if (!layer) return;
       abrirPopupLeaflet(layer.feature, layer, capaConfig, event);
@@ -569,7 +696,8 @@
           if (capaConfig.id === 'departamentos') {
             // Popup con API nativa de Leaflet: L.popup().setLatLng().setContent().openOn(map).
             // También se deja bindPopup como respaldo para navegadores/capas multipolígono.
-            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre), {
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig), {
+              pane: 'panePopupsTop',
               maxWidth: 460,
               minWidth: 300,
               autoPan: true,
@@ -577,6 +705,7 @@
               className: 'sig-popup-leaflet-departamento'
             });
             layer.on('click', event => {
+              SIG_STATE.ultimoClickCapaMs = Date.now();
               SIG_STATE.ultimoClickDepartamentoMs = Date.now();
               abrirPopupLeaflet(feature, layer, capaConfig, event);
             });
@@ -588,9 +717,14 @@
             });
             layer.on('mouseout', () => window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true }));
           } else {
-            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig.nombre), {
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig), {
+              pane: 'panePopupsTop',
               maxWidth: 420,
               autoPan: true
+            });
+            layer.on('click', event => {
+              SIG_STATE.ultimoClickCapaMs = Date.now();
+              abrirPopupLeaflet(feature, layer, capaConfig, event);
             });
           }
         }

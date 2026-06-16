@@ -9,7 +9,7 @@
 */
 
 // Se crea un objeto global para que sigindex.html pueda leerlo después de cargar este archivo.
-window.SIG_CONFIG_VERSION = '20260615-directo-casos2026-v3';
+window.SIG_CONFIG_VERSION = '20260615-sig-panel-filtros-blanco-v2';
 window.SIG_CONFIG = {
   // Configuración inicial del mapa: centro aproximado de Colombia y zoom nacional.
   mapa: {
@@ -23,30 +23,23 @@ window.SIG_CONFIG = {
     ruedaZoomSensibilidad: 180
   },
 
-  // Configuración de Supabase para el módulo SIG.
-  // Versión: 20260615-directo-casos2026-v3
-  // Usa la misma anon public key o publishable key que ya funciona en index.html.
+
+  // Conexión pública controlada a Supabase para reconstrucción del módulo SIG.
+  // No usar usuario, contraseña ni service_role en archivos del navegador.
+  // Se cuenta casos_2026 como datos core y se consulta sig_casos_public_2026 para puntos del mapa.
   supabase: {
     url: 'https://sjvuxlcgeswapbphsqkv.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdnV4bGNnZXN3YXBicGhzcWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NDI5OTUsImV4cCI6MjA2MzQxODk5NX0.6DsrPgVPvg0VWIjV7jnwgNlIxFAM0wOeJfGYbl9MaKE',
-    // Versión directa: el SIG consulta las tablas base de Supabase.
-    // casos_2026 se usa para casos; caso_municipio_2026 para puntos/coordenadas.
-    tablaCasosLite: 'casos_2026',
-    tablaPuntosLite: 'caso_municipio_2026',
-    tablaCasosDetalle: 'casos_2026',
-    tablaOpcionesFiltros: null,
-    // Se conservan estos nombres solo por compatibilidad con versiones anteriores.
-    tablaCasosPublica: 'casos_2026',
-    tablaCasosAvanzada: 'casos_2026',
-    tamanoPagina: 500,
-    maxPaginas: 20,
-    timeoutConsultaMs: 45000,
-    timeoutOpcionesMs: 12000
+    clavePublica: 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg',
+    vistaCasos: 'sig_casos_public_2026',
+    tablaCasos: 'casos_2026',
+    timeoutConsultaMs: 15000,
+    batchPuntosMapa: 1000,
+    batchCasosCore: 1000
   },
 
-  // Estilo inicial de los circleMarker de casos consultados desde Supabase.
+  // Estilo inicial de los circleMarker de casos. Usan un pane propio por encima de todas las capas.
   casos: {
-    pane: 'pane9',
+    pane: 'paneCasosTop',
     zoomMaximoAjuste: 9,
     estiloPunto: {
       radio: 5,
@@ -59,13 +52,13 @@ window.SIG_CONFIG = {
   },
 
   // Configuración del mapa de calor departamental. Se alimenta desde los registros
-  // filtrados en el panel o desde los resultados de la consola avanzada.
+  // filtrados en el panel.
   mapaCalorDepartamentos: {
     propiedadNombre: 'DPTO_CNMBR',
     metricaInicial: 'casos',
     colorSinDato: '#f8fafc',
     colorBorde: '#334155',
-    opacidad: 0.78,
+    opacidad: 1,
     grosorLinea: 1.2,
     colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985']
   },
@@ -83,7 +76,9 @@ window.SIG_CONFIG = {
     { id: 'pane7', nombre: 'Nivel 7', zIndex: 480 },
     { id: 'pane8', nombre: 'Nivel 8', zIndex: 490 },
     { id: 'pane9', nombre: 'Nivel 9 · Superior', zIndex: 500 },
-    { id: 'labels', nombre: 'Labels · Etiquetas', zIndex: 650, pointerEvents: 'none' }
+    { id: 'labels', nombre: 'Labels · Etiquetas', zIndex: 650, pointerEvents: 'none' },
+    { id: 'paneCasosTop', nombre: 'Casos · Puntos superiores', zIndex: 1000 },
+    { id: 'panePopupsTop', nombre: 'Popups · Sobre marcadores', zIndex: 1300 }
   ],
 
   // Paleta reutilizable para controles de color. Se usa para color de relleno y color de línea.
@@ -107,10 +102,10 @@ window.SIG_CONFIG = {
       nombre: 'Tablero',
       archivo: './Layers/001tablero.geojson',
       activa: false,
-      pane: 'pane1',
+      pane: 'pane0',
       colorCapa: '#000000',
       colorLinea: '#000000',
-      opacidad: 0.3,
+      opacidad: 1,
       grosorLinea: 1
     },
     {
@@ -121,7 +116,7 @@ window.SIG_CONFIG = {
       pane: 'pane0',
       colorCapa: '#d9ead3',
       colorLinea: '#6aa84f',
-      opacidad: 0.3,
+      opacidad: 1,
       grosorLinea: 1
     },
     {
@@ -129,13 +124,16 @@ window.SIG_CONFIG = {
       nombre: 'Departamentos',
       archivo: './Layers/003departamentos.geojson',
       activa: false,
-      // Se ubica arriba de municipios/resguardos para permitir clic directo en departamentos.
-      // Los puntos de casos siguen encima en pane9.
-      pane: 'pane8',
+      // Se ubica debajo de municipios y resguardos para que esas capas también reciban clic.
+      // Los puntos de casos usan paneCasosTop y quedan por encima de todas las capas.
+      pane: 'pane3',
       colorCapa: '#bdd7ee',
       colorLinea: '#1f77b4',
-      opacidad: 0.3,
-      grosorLinea: 1
+      opacidad: 1,
+      grosorLinea: 1,
+      popupCampos: [
+        { etiqueta: 'Departamento', campos: ['DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'NOMBRE_DPT', 'NOMBRE', 'nombre'] }
+      ]
     },
     {
       id: 'municipios',
@@ -145,8 +143,14 @@ window.SIG_CONFIG = {
       pane: 'pane4',
       colorCapa: '#fffcc4',
       colorLinea: '#d94801',
-      opacidad: 0.2,
-      grosorLinea: 1
+      opacidad: 1,
+      grosorLinea: 1,
+      popupCampos: [
+        { etiqueta: 'Municipio', campos: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE_MPI', 'NOMBRE', 'nombre'] },
+        { etiqueta: 'Nombre', campos: ['nombre', 'NOMBRE', 'NOMBRE_MPI', 'MPIO_CNMBR'] },
+        { etiqueta: 'DEPTO', campos: ['DEPTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPARTAMENTO'] },
+        { etiqueta: 'Departamento', campos: ['departamento', 'DEPARTAMENTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO'] }
+      ]
     },
     {
       id: 'resguardos',
@@ -156,10 +160,15 @@ window.SIG_CONFIG = {
       pane: 'pane6',
       colorCapa: '#b7f7c6',
       colorLinea: '#006d2c',
-      opacidad: 0.4,
-      grosorLinea: 2
+      opacidad: 1,
+      grosorLinea: 2,
+      popupCampos: [
+        { etiqueta: 'Pueblo', campos: ['PUEBLO', 'Pueblo', 'pueblo'] },
+        { etiqueta: 'Departamento', campos: ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'departamento'] },
+        { etiqueta: 'Municipio', campos: ['MUNICIPIO', 'MPIO_CNMBR', 'municipio'] },
+        { etiqueta: 'Nombre', campos: ['NOMBRE', 'nombre', 'NOMBRE_RES', 'RESGUARDO'] }
+      ]
     }
   ]
 };
 
-console.info('SIG config cargada: 20260615-directo-casos2026-v3 · fuente directa casos_2026');
