@@ -162,6 +162,91 @@
     .table-wrap { overflow: auto; max-height: 520px; border-radius: 1rem; border: 1px solid var(--obs-line); }
 
     .method-note { font-size: .86rem; color: var(--obs-muted); line-height: 1.55; }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn-back-index {
+      border-radius: 999px;
+      font-weight: 700;
+      border-color: rgba(15, 58, 95, .22);
+      color: var(--obs-primary);
+      background: #ffffff;
+    }
+
+    .btn-back-index:hover {
+      background: var(--obs-primary);
+      color: #ffffff;
+      border-color: var(--obs-primary);
+    }
+
+    .intro-card {
+      margin-top: -1.8rem;
+      position: relative;
+      z-index: 3;
+    }
+
+    .intro-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      border-radius: 999px;
+      border: 1px solid rgba(14, 116, 144, .18);
+      background: #ecfeff;
+      color: #0e7490;
+      padding: .35rem .7rem;
+      font-size: .78rem;
+      font-weight: 800;
+      margin-bottom: .85rem;
+    }
+
+    .intro-text {
+      color: #334155;
+      line-height: 1.65;
+      font-size: .98rem;
+    }
+
+    .intro-list {
+      display: grid;
+      gap: .75rem;
+    }
+
+    .intro-list-item {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: .75rem;
+      align-items: start;
+    }
+
+    .intro-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: .9rem;
+      display: grid;
+      place-items: center;
+      color: var(--obs-primary-2);
+      background: #e0f2fe;
+      border: 1px solid rgba(14, 116, 144, .14);
+      flex: 0 0 auto;
+    }
+
+    .intro-list-title {
+      font-weight: 800;
+      color: var(--obs-primary);
+      margin-bottom: .12rem;
+    }
+
+    .intro-list-text {
+      color: var(--obs-muted);
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+
     .loading-screen {
       position: fixed; inset: 0; z-index: 2500;
       background: rgba(244,247,251,.92);
@@ -196,9 +281,14 @@
           <span class="brand-mark"><i class="bi bi-bar-chart-line-fill"></i></span>
           <span>Observatorio · Consulta pública</span>
         </a>
-        <div class="d-none d-md-flex align-items-center gap-2 small text-muted">
-          <i class="bi bi-database-check"></i>
-          <span id="estadoPublico">Conectando datos públicos...</span>
+        <div class="nav-actions">
+          <a class="btn btn-sm btn-back-index" href="../index.html">
+            <i class="bi bi-arrow-left me-1"></i>Volver al inicio
+          </a>
+          <div class="d-none d-md-flex align-items-center gap-2 small text-muted">
+            <i class="bi bi-database-check"></i>
+            <span id="estadoPublico">Conectando datos públicos...</span>
+          </div>
         </div>
       </div>
     </nav>
@@ -247,6 +337,56 @@
         <div class="mt-4 small opacity-75" id="ultimaActualizacion">Fuente: base pública del Observatorio.</div>
       </div>
     </header>
+
+    <section class="intro-card">
+      <div class="container">
+        <div class="panel-card pad">
+          <div class="row g-4 align-items-start">
+            <div class="col-lg-7">
+              <div class="intro-pill"><i class="bi bi-journal-text"></i><span>Proyecto de investigación y documentación</span></div>
+              <h2 class="h3 fw-bold mb-3 text-primary-emphasis">Sobre esta consulta pública</h2>
+              <div class="intro-text">
+                <p class="mb-2">Este módulo hace parte de un proyecto de investigación sobre derechos humanos en pueblos indígenas. Su propósito es organizar, documentar y presentar información pública sobre hechos registrados en distintos territorios, con una lectura agregada, territorial y descriptiva.</p>
+                <p class="mb-2">La información se construye a partir de fuentes producidas por organizaciones indígenas, organizaciones sociales, entidades públicas, medios de comunicación y documentación propia del Observatorio. En lo posible, los registros se actualizan diariamente para mantener una consulta pública vigente.</p>
+                <p class="mb-0">Si requiere información más específica, precisiones metodológicas o cruces adicionales de datos, puede escribir a <a class="fw-bold" href="mailto:wilson.largo.s@gmail.com">wilson.largo.s@gmail.com</a>.</p>
+              </div>
+            </div>
+            <div class="col-lg-5">
+              <div class="intro-list">
+                <div class="intro-list-item">
+                  <div class="intro-icon"><i class="bi bi-shield-check"></i></div>
+                  <div>
+                    <div class="intro-list-title">Consulta pública agregada</div>
+                    <div class="intro-list-text">Los datos se presentan en forma consolidada, sin exponer información personal ni sensible de víctimas o personas registradas.</div>
+                  </div>
+                </div>
+                <div class="intro-list-item">
+                  <div class="intro-icon"><i class="bi bi-map"></i></div>
+                  <div>
+                    <div class="intro-list-title">Lectura territorial</div>
+                    <div class="intro-list-text">El módulo permite observar concentración por departamentos, municipios y puntos públicos asociados a los casos documentados.</div>
+                  </div>
+                </div>
+                <div class="intro-list-item">
+                  <div class="intro-icon"><i class="bi bi-database-check"></i></div>
+                  <div>
+                    <div class="intro-list-title">Fuentes diversas</div>
+                    <div class="intro-list-text">Los registros integran información de organizaciones, fuentes institucionales, medios y documentación propia del proceso de observación.</div>
+                  </div>
+                </div>
+                <div class="intro-list-item">
+                  <div class="intro-icon"><i class="bi bi-envelope"></i></div>
+                  <div>
+                    <div class="intro-list-title">Solicitud de información</div>
+                    <div class="intro-list-text">Para consultas específicas, cruces de información o ampliación de contexto, se dispone el correo de contacto del Observatorio.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <main>
       <section class="section">
@@ -392,6 +532,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./public.js?v=20260617-public-v2"></script>
+  <script src="./public.js?v=20260617-public-v3-intro"></script>
 </body>
 </html>
