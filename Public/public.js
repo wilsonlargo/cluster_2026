@@ -1,12 +1,10 @@
 /*
-  public.js · Módulo público del Observatorio
-  v2: corrige rutas de capas porque Public y SIG son carpetas hermanas.
-  Lee datos públicos desde casos_2026 y sig_casos_public_2026 sin tocar datos personales.
+  public.js · Microinforme público del Observatorio
 */
 (function () {
   'use strict';
 
-  const VERSION = '20260617-public-v2';
+  const VERSION = '20260617-public-v4-microinforme';
   const SUPABASE_URL = 'https://sjvuxlcgeswapbphsqkv.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg';
   const TABLA_CASOS = 'casos_2026';
@@ -122,7 +120,7 @@
           <div class="d-flex align-items-start gap-3">
             <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
             <div>
-              <div class="fw-bold">No se pudo cargar el módulo público</div>
+              <div class="fw-bold">No se pudo preparar el microinforme</div>
               <div class="small text-muted mt-1">${escapeHtml(message)}</div>
               <button class="btn btn-sm btn-outline-primary mt-3" type="button" onclick="location.reload()">Reintentar</button>
             </div>
@@ -365,7 +363,7 @@
     const actor = summary.topActor?.categoria || 'sin macroactor predominante';
     const pueblo = summary.topPueblo?.categoria || 'sin pueblo predominante';
     const anio = summary.topAnio?.categoria || 'sin año predominante';
-    return `Durante ${scopeLabel}, el Observatorio registra <strong>${fmt(t.casos)} casos</strong> asociados a <strong>${fmt(t.personas)} personas</strong>. La mayor concentración territorial se observa en <strong>${escapeHtml(dept)}</strong>. El macrotipo con mayor frecuencia corresponde a <strong>${escapeHtml(macro)}</strong>, mientras que el macroactor más recurrente es <strong>${escapeHtml(actor)}</strong>. En términos poblacionales, el mayor número de registros se concentra en <strong>${escapeHtml(pueblo)}</strong>. El año con mayor registro dentro del periodo es <strong>${escapeHtml(anio)}</strong>. Esta lectura permite identificar patrones descriptivos de concentración territorial, afectación colectiva y recurrencia de hechos en los datos públicos disponibles.`;
+    return `Durante ${scopeLabel}, el Observatorio registra <strong>${fmt(t.casos)} casos</strong> asociados a <strong>${fmt(t.personas)} personas</strong>. La mayor concentración territorial se observa en <strong>${escapeHtml(dept)}</strong>. El macrotipo con mayor frecuencia corresponde a <strong>${escapeHtml(macro)}</strong>, mientras que el macroactor más recurrente es <strong>${escapeHtml(actor)}</strong>. En términos poblacionales, el mayor número de registros se concentra en <strong>${escapeHtml(pueblo)}</strong>. El año con mayor registro dentro del periodo es <strong>${escapeHtml(anio)}</strong>. Esta lectura permite identificar patrones descriptivos de concentración territorial, afectación colectiva y recurrencia de hechos en los registros consolidados.`;
   }
 
   function renderDashboard() {
@@ -380,7 +378,7 @@
     setText('heroAnioLabel', `Año ${ANIO_ACTUAL}`);
     setText('tituloHistorico', `Consolidado histórico ${ANIO_INICIO} – ${ANIO_ACTUAL}`);
     setText('tituloAnioVigente', `Comportamiento del año ${ANIO_ACTUAL}`);
-    setText('ultimaActualizacion', `Fuente: base pública del Observatorio · Última consulta: ${new Date().toLocaleString('es-CO')}`);
+    setText('ultimaActualizacion', `Fuente: registros consolidados del Observatorio · Corte del microinforme: ${new Date().toLocaleString('es-CO')}`);
 
     setHTML('historicoMiniStats', makeMiniStats([
       { value: fmt(historico.total.casos), label: 'Casos acumulados' },
@@ -447,7 +445,7 @@
     if (!state.tablaTSV) return;
     try {
       await navigator.clipboard.writeText(state.tablaTSV);
-      updateStatus('Tabla pública copiada. Puedes pegarla en Excel o Word.');
+      updateStatus('Tabla del microinforme copiada.');
     } catch (_) {
       const ta = document.createElement('textarea');
       ta.value = state.tablaTSV;
@@ -457,7 +455,7 @@
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      updateStatus('Tabla pública copiada.');
+      updateStatus('Tabla del microinforme copiada.');
     }
   }
 
@@ -465,7 +463,7 @@
     if (state.geojsonCache.has(key)) return state.geojsonCache.get(key);
     const url = LAYERS[key];
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`No se pudo cargar ${url}`);
+    if (!res.ok) throw new Error(`No se pudo preparar la cartografía del microinforme`);
     const data = await res.json();
     state.geojsonCache.set(key, data);
     return data;
@@ -692,7 +690,7 @@
     return `
       <div style="min-width:260px;max-width:410px">
         <div class="popup-title">Caso ${escapeHtml(record.id_old || record.caso_id || '')}</div>
-        <div class="small text-muted mb-2">Punto público municipal</div>
+        <div class="small text-muted mb-2">Registro territorial municipal</div>
         <table class="table table-sm popup-table"><tbody>
           <tr><th>Fecha</th><td>${escapeHtml(formatDate(record.fecha_evento))}</td></tr>
           <tr><th>Departamento</th><td>${escapeHtml(record.departamento || '')}</td></tr>
@@ -713,7 +711,7 @@
   }
 
   async function activatePointsMap() {
-    updateStatus('Cargando puntos públicos...');
+    updateStatus('Cargando puntos territoriales...');
     clearMapLayers();
     const basemap = await fetchGeoJSON('basemap').catch(() => null);
     if (basemap) addLayer(L.geoJSON(basemap, { style: baseStyle('basemap'), interactive: false }));
@@ -742,7 +740,7 @@
     });
     addLayer(group);
     if (bounds.isValid()) state.map.fitBounds(bounds.pad(.12), { maxZoom: 9 });
-    updateStatus(`Puntos públicos cargados: ${fmt(count)}.`);
+    updateStatus(`Puntos territoriales cargados: ${fmt(count)}.`);
   }
 
   async function switchMap(mode) {
@@ -791,33 +789,33 @@
   }
 
   async function loadData() {
-    if (!window.supabase?.createClient) throw new Error('No cargó la librería de Supabase.');
+    if (!window.supabase?.createClient) throw new Error('No fue posible iniciar la lectura del microinforme.');
     state.client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    updateStatus('Consultando casos públicos...');
+    updateStatus('Organizando registros del microinforme...');
     state.core = await fetchBatched(TABLA_CASOS, CORE_COLUMNS);
 
-    updateStatus('Consultando puntos públicos...');
+    updateStatus('Preparando lectura territorial...');
     state.points = await fetchBatched(VISTA_PUNTOS, POINT_COLUMNS);
 
-    updateStatus('Procesando estadísticas públicas...');
+    updateStatus('Construyendo resumen estadístico...');
     prepareData();
   }
 
   async function init() {
     try {
-      updateStatus('Iniciando módulo público...');
+      updateStatus('Preparando microinforme...');
       initMap();
       await loadData();
       renderDashboard();
       await switchMap('departamentos');
       qs('btnCopiarTabla')?.addEventListener('click', copyTable);
       window.addEventListener('resize', () => state.map?.invalidateSize());
-      updateStatus(`Módulo público · ${fmt(state.historico.total.casos)} casos · ${fmt(state.historico.total.personas)} personas.`);
+      updateStatus(`Microinforme · ${fmt(state.historico.total.casos)} casos · ${fmt(state.historico.total.personas)} personas.`);
       hideLoading();
     } catch (err) {
       console.error(err);
-      showError(err?.message || 'Error desconocido al cargar el módulo público.');
+      showError(err?.message || 'Error desconocido al preparar el microinforme.');
     }
   }
 
