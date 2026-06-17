@@ -9,7 +9,7 @@
 */
 
 // Se crea un objeto global para que sigindex.html pueda leerlo después de cargar este archivo.
-window.SIG_CONFIG_VERSION = '20260615-sig-panel-filtros-blanco-v2';
+window.SIG_CONFIG_VERSION = '20260617-console-terminal-v5-popup-fix';
 window.SIG_CONFIG = {
   // Configuración inicial del mapa: centro aproximado de Colombia y zoom nacional.
   mapa: {
@@ -51,11 +51,43 @@ window.SIG_CONFIG = {
     }
   },
 
-  // Configuración del mapa de calor departamental. Se alimenta desde los registros
-  // filtrados en el panel.
+  // Configuración del mapa de calor dinámico.
+  // Se calcula en el navegador con los datos filtrados de casos_2026 y sig_casos_public_2026.
+  // No depende de RPC ni de tablas ligeras anteriores.
+  mapaCalor: {
+    unidadInicial: 'departamentos',
+    metricaInicial: 'idr',
+    colorSinDato: '#f8fafc',
+    colorBorde: '#334155',
+    opacidad: 1,
+    grosorLinea: 1.2,
+    colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985'],
+    pesosIDR: {
+      exposicion: 0.35,
+      impacto: 0.40,
+      intensidad: 0.25
+    },
+    capas: {
+      departamentos: {
+        capaId: 'departamentos',
+        nombre: 'Departamentos',
+        propiedadNombre: ['DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'NOMBRE_DPT', 'NOMBRE', 'nombre'],
+        tipoUnidad: 'departamento'
+      },
+      municipios: {
+        capaId: 'municipios',
+        nombre: 'Municipios',
+        propiedadNombre: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE_MPI', 'NOMBRE', 'nombre'],
+        propiedadDepartamento: ['DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'departamento'],
+        tipoUnidad: 'municipio'
+      }
+    }
+  },
+
+  // Compatibilidad con versiones anteriores que buscaban esta clave.
   mapaCalorDepartamentos: {
     propiedadNombre: 'DPTO_CNMBR',
-    metricaInicial: 'casos',
+    metricaInicial: 'idr',
     colorSinDato: '#f8fafc',
     colorBorde: '#334155',
     opacidad: 1,
@@ -146,10 +178,8 @@ window.SIG_CONFIG = {
       opacidad: 1,
       grosorLinea: 1,
       popupCampos: [
-        { etiqueta: 'Municipio', campos: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE_MPI', 'NOMBRE', 'nombre'] },
-        { etiqueta: 'Nombre', campos: ['nombre', 'NOMBRE', 'NOMBRE_MPI', 'MPIO_CNMBR'] },
-        { etiqueta: 'DEPTO', campos: ['DEPTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPARTAMENTO'] },
-        { etiqueta: 'Departamento', campos: ['departamento', 'DEPARTAMENTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO'] }
+        { etiqueta: 'Nombre', campos: ['MPIO_CNMBR'] },
+        { etiqueta: 'Departamento', campos: ['DEPTO'] }
       ]
     },
     {
@@ -163,10 +193,10 @@ window.SIG_CONFIG = {
       opacidad: 1,
       grosorLinea: 2,
       popupCampos: [
-        { etiqueta: 'Pueblo', campos: ['PUEBLO', 'Pueblo', 'pueblo'] },
-        { etiqueta: 'Departamento', campos: ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'departamento'] },
-        { etiqueta: 'Municipio', campos: ['MUNICIPIO', 'MPIO_CNMBR', 'municipio'] },
-        { etiqueta: 'Nombre', campos: ['NOMBRE', 'nombre', 'NOMBRE_RES', 'RESGUARDO'] }
+        { etiqueta: 'Pueblo', campos: ['PUEBLO', 'Pueblo', 'pueblo', 'ETNIA', 'ETNICO', 'COMUNIDAD'] },
+        { etiqueta: 'Departamento', campos: ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'departamento'] },
+        { etiqueta: 'Municipio', campos: ['MUNICIPIO', 'MPIO_CNMBR', 'NOMBRE_MPI', 'NOM_MPIO', 'municipio'] },
+        { etiqueta: 'Nombre', campos: ['NOMBRE', 'nombre', 'NOMBRE_RES', 'NOM_RESGUARDO', 'RESGUARDO', 'NOM_RESG', 'NOM_RES'] }
       ]
     }
   ]

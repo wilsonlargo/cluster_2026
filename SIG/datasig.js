@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '20260615-sig-panel-filtros-blanco-v2';
+  const VERSION = '20260617-console-terminal-v6-view-compatible';
   const ANIO_INICIO = 2016;
 
   const CAMPOS_CORE_SIG = [
@@ -29,9 +29,18 @@
     'nhombres',
     'nmenores',
     'macroactor',
-    'contextual_type'
+    'contextual_type',
+    'contextual_info',
+    'detalle',
+    'detalle_lugar',
+    'fuente',
+    'fechafuente',
+    'enlace'
   ].join(',');
 
+  // Solo columnas que existen en public.sig_casos_public_2026.
+  // Los campos ampliados del popup (detalle, fuente, enlace, contexto, etc.)
+  // se toman después desde casos_2026 y se cruzan por caso_id.
   const CAMPOS_VISTA_SIG = [
     'punto_id',
     'caso_id',
@@ -80,6 +89,20 @@
     const partes = String(fecha).split('-');
     if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
     return String(fecha);
+  }
+
+
+  function urlSeguroSIG(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  }
+
+  function recortarTextoSIG(texto, max = 360) {
+    const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
+    if (!limpio) return '';
+    return limpio.length > max ? `${limpio.slice(0, max)}…` : limpio;
   }
 
   function normTxt(valor) {
@@ -742,6 +765,39 @@
         </div>
       </div>
 
+      <div class="filter-block" id="bloqueMapaCalorSIG">
+        <div class="filter-block-title"><i class="bi bi-grid-3x3-gap"></i>Mapa de calor</div>
+        <div class="small text-muted mb-2">Calcula el IDR con los filtros activos. También permite pintar casos o personas por unidad territorial.</div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label fw-semibold small" for="selectUnidadCalorSIG">Unidad</label>
+            <select class="form-select form-select-sm" id="selectUnidadCalorSIG">
+              <option value="departamentos">Departamentos</option>
+              <option value="municipios">Municipios</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold small" for="selectMetricaCalorSIG">Variable</label>
+            <select class="form-select form-select-sm" id="selectMetricaCalorSIG">
+              <option value="idr">IDR</option>
+              <option value="casos">Casos</option>
+              <option value="personas">Personas</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2 mt-3">
+          <button class="btn btn-primary filter-action-btn" id="btnAplicarMapaCalorSIG" type="button">
+            <i class="bi bi-grid-3x3-gap me-1"></i>Aplicar mapa de calor
+          </button>
+          <button class="btn btn-outline-secondary filter-action-btn" id="btnLimpiarMapaCalorSIG" type="button">
+            <i class="bi bi-eraser me-1"></i>Limpiar mapa de calor
+          </button>
+        </div>
+        <div class="heat-status mt-2" id="estadoMapaCalorSIG">Sin mapa de calor aplicado.</div>
+      </div>
+
       <div class="filter-block">
         <button class="btn btn-light border w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#configMarcadoresCasos" aria-expanded="false" aria-controls="configMarcadoresCasos">
           <span class="fw-semibold"><i class="bi bi-sliders me-1"></i>Configurar marcador circular</span>
@@ -816,6 +872,8 @@
     qs('btnLimpiarCasosMapa')?.addEventListener('click', () => limpiarRegistrosMapa());
     qs('btnAplicarFiltrosSIG')?.addEventListener('click', () => aplicarFiltrosCombinadosSIG());
     qs('btnLimpiarFiltrosSIG')?.addEventListener('click', () => limpiarFiltrosCombinadosSIG());
+    qs('btnAplicarMapaCalorSIG')?.addEventListener('click', () => aplicarMapaCalorSIG());
+    qs('btnLimpiarMapaCalorSIG')?.addEventListener('click', () => limpiarMapaCalorSIG());
 
     const checkAcumular = qs('checkAcumularFiltrosSIG');
     if (checkAcumular) {
@@ -883,8 +941,11 @@
 
   function crearPopupCaso(registro) {
     const pueblo = valorPlano(registro.pueblo);
+    const enlaceUrl = urlSeguroSIG(registro.enlace);
+    const detalle = recortarTextoSIG(registro.detalle, 520);
+    const contexto = recortarTextoSIG(registro.contextual_info, 360);
     const filas = [
-      ['Fecha', formatoFecha(registro.fecha_evento)],
+      ['Fecha evento', formatoFecha(registro.fecha_evento)],
       ['Macrotipo', registro.macrotipo],
       ['Departamento', registro.departamento],
       ['Municipio', registro.municipio],
@@ -893,17 +954,35 @@
       ['Personas', formatoNumero(registro.npersonas)],
       ['Mujeres', formatoNumero(registro.nmujeres)],
       ['Hombres', formatoNumero(registro.nhombres)],
-      ['Menores', formatoNumero(registro.nmenores)]
+      ['Menores', formatoNumero(registro.nmenores)],
+      ['Fuente', registro.fuente],
+      ['Fecha fuente', formatoFecha(registro.fechafuente)],
+      ['Detalle lugar', registro.detalle_lugar]
     ]
-      .filter(([, valor]) => valor !== null && valor !== undefined && String(valor).trim() !== '')
+      .filter(([, valor]) => valor !== null && valor !== undefined && String(valor).trim() !== '' && String(valor).trim() !== '0')
       .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
       .join('');
 
+    const enlace = enlaceUrl
+      ? `<div class="mt-2"><a href="${escapeHtml(enlaceUrl)}" target="_blank" rel="noopener noreferrer">Abrir enlace fuente</a></div>`
+      : '';
+
+    const bloqueDetalle = detalle
+      ? `<div class="mt-2"><div class="fw-semibold small text-muted">Detalle</div><div class="small">${escapeHtml(detalle)}</div></div>`
+      : '';
+
+    const bloqueContexto = contexto
+      ? `<div class="mt-2"><div class="fw-semibold small text-muted">Información contextual</div><div class="small">${escapeHtml(contexto)}</div></div>`
+      : '';
+
     return `
-      <div style="min-width:240px; max-width:360px">
-        <div class="fw-bold mb-1">Caso ${escapeHtml(registro.id_old || registro.caso_id || '')}</div>
-        <div class="small text-muted mb-2">Fuente municipal: caso_municipio_2026</div>
+      <div style="min-width:280px; max-width:460px">
+        <div class="fw-bold mb-1">Caso ${escapeHtml(registro.id_old || registro.caso_id || registro.id || '')}</div>
+        <div class="small text-muted mb-2">Punto municipal · caso_municipio_2026</div>
         <table class="table table-sm mb-0"><tbody>${filas}</tbody></table>
+        ${bloqueDetalle}
+        ${bloqueContexto}
+        ${enlace}
       </div>
     `;
   }
@@ -940,8 +1019,26 @@
       desde += batchSize;
     }
 
-    state.todosPuntosCasosSIG = registros;
-    return registros;
+    let enriquecidos = registros;
+    try {
+      const tabla = cfg.tablaCasos || 'casos_2026';
+      const core = await cargarCasosCoreRegistros(cliente, tabla);
+      const coreById = new Map((core || []).map(r => [String(r.id), r]));
+      enriquecidos = registros.map(punto => {
+        const base = coreById.get(String(punto.caso_id)) || {};
+        return {
+          ...base,
+          ...punto,
+          id: base.id || punto.caso_id || punto.id,
+          caso_id: punto.caso_id || base.id
+        };
+      });
+    } catch (e) {
+      enriquecidos = registros;
+    }
+
+    state.todosPuntosCasosSIG = enriquecidos;
+    return enriquecidos;
   }
 
   async function cargarPuntosCasos(cliente, filtros = {}) {
@@ -998,8 +1095,19 @@
       marker._sigRegistro = registro;
       marker.bindPopup(() => crearPopupCaso(registro), {
         pane: 'panePopupsTop',
-        maxWidth: 420,
-        autoPan: true
+        maxWidth: 460,
+        autoPan: true,
+        closeButton: true
+      });
+      marker.on('click', event => {
+        if (event?.originalEvent) {
+          L.DomEvent.stopPropagation(event.originalEvent);
+          L.DomEvent.preventDefault(event.originalEvent);
+        }
+        L.popup({ pane: 'panePopupsTop', maxWidth: 480, autoPan: true, closeButton: true })
+          .setLatLng(event.latlng)
+          .setContent(crearPopupCaso(registro))
+          .openOn(state.mapa);
       });
       marker.addTo(grupoDestino);
       if (marker.bringToFront) marker.bringToFront();
@@ -1123,6 +1231,7 @@
 
       const registros = await cargarPuntosCasos(state.supabaseClient, state.filtrosActivos);
       pintarRegistrosEnMapa(registros, { ajustarVista: true, filtros: state.filtrosActivos, acumular, estilo: estiloFiltro, resumen });
+      await refrescarMapaCalorSiActivo();
 
       const texto = textoFiltrosActivos(state.filtrosActivos);
       actualizarEstado(`${acumular ? 'Filtro acumulado' : 'Filtro aplicado'} · ${texto} · ${formatoNumero(resumen.totalCasos)} casos · ${formatoNumero(resumen.totalPersonas)} personas`);
@@ -1162,6 +1271,7 @@
 
     limpiarRegistrosMapa();
     actualizarStatsPanel();
+    refrescarMapaCalorSiActivo();
     actualizarEstado(`Filtro limpio · ${formatoNumero(state.totalCasosPanel || 0)} casos · ${formatoNumero(state.totalPersonasPanel || 0)} personas`);
     return true;
   }
@@ -1271,16 +1381,570 @@
     return limpiarFiltrosCombinadosSIG();
   }
 
+
+  // ----------------- MAPA DE CALOR / IDR -----------------
+  function cfgMapaCalor() {
+    const cfg = window.SIG_CONFIG?.mapaCalor || window.SIG_CONFIG?.mapaCalorDepartamentos || {};
+    return {
+      unidadInicial: cfg.unidadInicial || 'departamentos',
+      metricaInicial: cfg.metricaInicial || 'idr',
+      colorSinDato: cfg.colorSinDato || '#f8fafc',
+      colorBorde: cfg.colorBorde || '#334155',
+      opacidad: Number(cfg.opacidad ?? 1),
+      grosorLinea: Number(cfg.grosorLinea ?? 1.2),
+      colores: Array.isArray(cfg.colores) && cfg.colores.length ? cfg.colores : ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985'],
+      pesosIDR: cfg.pesosIDR || { exposicion: 0.35, impacto: 0.40, intensidad: 0.25 },
+      capas: cfg.capas || {
+        departamentos: { capaId: 'departamentos', tipoUnidad: 'departamento', propiedadNombre: ['DPTO_CNMBR', 'DEPARTAMENTO', 'NOMBRE'] },
+        municipios: { capaId: 'municipios', tipoUnidad: 'municipio', propiedadNombre: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE'], propiedadDepartamento: ['DPTO_CNMBR', 'DEPARTAMENTO', 'DEPTO'] }
+      }
+    };
+  }
+
+  function percentilInterpolado(valores, p) {
+    const arr = (valores || []).map(Number).filter(v => Number.isFinite(v)).sort((a, b) => a - b);
+    if (!arr.length) return 0;
+    if (arr.length === 1) return arr[0];
+    const pos = (arr.length - 1) * p;
+    const base = Math.floor(pos);
+    const resto = pos - base;
+    if (arr[base + 1] !== undefined) return arr[base] + resto * (arr[base + 1] - arr[base]);
+    return arr[base];
+  }
+
+  function obtenerPropFlexibleObjeto(props, campos) {
+    if (!props || !campos) return '';
+    const lista = Array.isArray(campos) ? campos : [campos];
+    const entradas = Object.entries(props);
+
+    for (const campo of lista) {
+      if (Object.prototype.hasOwnProperty.call(props, campo)) return props[campo];
+    }
+
+    for (const campo of lista) {
+      const buscado = String(campo).trim().toLowerCase();
+      const encontrado = entradas.find(([clave]) => String(clave).trim().toLowerCase() === buscado);
+      if (encontrado) return encontrado[1];
+    }
+
+    for (const campo of lista) {
+      const buscado = normTxt(campo).replace(/[^a-z0-9]/g, '');
+      const encontrado = entradas.find(([clave]) => normTxt(clave).replace(/[^a-z0-9]/g, '') === buscado);
+      if (encontrado) return encontrado[1];
+    }
+
+    return '';
+  }
+
+  function claveDepartamento(nombre) {
+    return normTxt(nombre || 'Sin departamento');
+  }
+
+  function claveMunicipio(departamento, municipio) {
+    const dep = normTxt(departamento || '');
+    const mun = normTxt(municipio || '');
+    return `${dep}|${mun}`;
+  }
+
+  function obtenerClaveFeatureMapaCalor(feature, unidad) {
+    const cfg = cfgMapaCalor();
+    const props = feature?.properties || {};
+    if (unidad === 'municipios') {
+      const capaCfg = cfg.capas.municipios || {};
+      const municipio = obtenerPropFlexibleObjeto(props, capaCfg.propiedadNombre || ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE', 'nombre']);
+      const departamento = obtenerPropFlexibleObjeto(props, capaCfg.propiedadDepartamento || ['DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'departamento']);
+      const claveCompleta = claveMunicipio(departamento, municipio);
+      return { clave: claveCompleta, claveAlterna: normTxt(municipio), nombre: municipio || 'Sin municipio', departamento: departamento || '' };
+    }
+
+    const capaCfg = cfg.capas.departamentos || {};
+    const nombre = obtenerPropFlexibleObjeto(props, capaCfg.propiedadNombre || ['DPTO_CNMBR', 'DEPARTAMENTO', 'NOMBRE', 'nombre']);
+    return { clave: claveDepartamento(nombre), claveAlterna: claveDepartamento(nombre), nombre: nombre || 'Sin departamento', departamento: nombre || '' };
+  }
+
+  function leerControlesMapaCalor() {
+    const cfg = cfgMapaCalor();
+    const unidad = qs('selectUnidadCalorSIG')?.value || cfg.unidadInicial || 'departamentos';
+    const metrica = qs('selectMetricaCalorSIG')?.value || cfg.metricaInicial || 'idr';
+    return {
+      unidad: unidad === 'municipios' ? 'municipios' : 'departamentos',
+      metrica: ['idr', 'casos', 'personas'].includes(metrica) ? metrica : 'idr'
+    };
+  }
+
+  function establecerControlesMapaCalor(unidad, metrica) {
+    const selUnidad = qs('selectUnidadCalorSIG');
+    const selMetrica = qs('selectMetricaCalorSIG');
+    if (selUnidad) selUnidad.value = unidad || 'departamentos';
+    if (selMetrica) selMetrica.value = metrica || 'idr';
+  }
+
+  function crearAgregadoUnidad(nombre, departamento = '') {
+    return {
+      nombre: nombre || 'Sin dato',
+      departamento: departamento || '',
+      casosSet: new Set(),
+      personas: 0,
+      mujeres: 0,
+      hombres: 0,
+      menores: 0,
+      casos: 0,
+      exposicion: 0,
+      impacto: 0,
+      intensidadRaw: 0,
+      intensidadNormalizada: 0,
+      idr: 0,
+      rango: 'Sin registro'
+    };
+  }
+
+  function finalizarIDR(mapaAgregados, totales) {
+    const cfg = cfgMapaCalor();
+    const pesos = cfg.pesosIDR || { exposicion: 0.35, impacto: 0.40, intensidad: 0.25 };
+    const lista = Array.from(mapaAgregados.entries()).map(([clave, item]) => {
+      item.clave = clave;
+      item.casos = item.casosSet.size;
+      item.exposicion = totales.totalCasos > 0 ? item.casos / totales.totalCasos : 0;
+      item.impacto = totales.totalPersonas > 0 ? item.personas / totales.totalPersonas : 0;
+      item.intensidadRaw = item.casos > 0 ? item.personas / item.casos : 0;
+      return item;
+    });
+
+    const p95 = percentilInterpolado(lista.map(item => item.intensidadRaw).filter(v => v > 0), 0.95);
+    lista.forEach(item => {
+      item.intensidadNormalizada = p95 > 0 ? Math.min(item.intensidadRaw, p95) / p95 : 0;
+      item.idr = 100 * (
+        Number(pesos.exposicion ?? 0.35) * item.exposicion +
+        Number(pesos.impacto ?? 0.40) * item.impacto +
+        Number(pesos.intensidad ?? 0.25) * item.intensidadNormalizada
+      );
+      if (item.idr >= 75) item.rango = 'Muy alto';
+      else if (item.idr >= 50) item.rango = 'Alto';
+      else if (item.idr >= 25) item.rango = 'Medio';
+      else if (item.idr > 0) item.rango = 'Bajo';
+      else item.rango = 'Sin registro';
+    });
+
+    return { lista, p95 };
+  }
+
+  async function calcularDatosMapaCalor(cliente, unidad, filtros = {}) {
+    const mapa = new Map();
+    let totalCasos = 0;
+    let totalPersonas = 0;
+
+    if (unidad === 'municipios') {
+      const puntos = await cargarPuntosCasos(cliente, filtros);
+      const casosUnicos = new Map();
+
+      puntos.forEach(registro => {
+        const casoId = registro.caso_id || registro.id;
+        if (casoId && !casosUnicos.has(casoId)) {
+          casosUnicos.set(casoId, Number(registro.npersonas || 0));
+        }
+
+        const municipio = String(registro.municipio || 'Sin municipio').trim() || 'Sin municipio';
+        const departamento = String(registro.departamento || '').trim();
+        const clave = claveMunicipio(departamento, municipio);
+        if (!normTxt(municipio)) return;
+
+        if (!mapa.has(clave)) mapa.set(clave, crearAgregadoUnidad(municipio, departamento));
+        const item = mapa.get(clave);
+        if (casoId) item.casosSet.add(casoId);
+        item.personas += Number(registro.npersonas || 0);
+        item.mujeres += Number(registro.nmujeres || 0);
+        item.hombres += Number(registro.nhombres || 0);
+        item.menores += Number(registro.nmenores || 0);
+      });
+
+      totalCasos = casosUnicos.size;
+      totalPersonas = Array.from(casosUnicos.values()).reduce((suma, valor) => suma + Number(valor || 0), 0);
+    } else {
+      const tabla = window.SIG_CONFIG?.supabase?.tablaCasos || 'casos_2026';
+      const registros = await cargarCasosCoreRegistros(cliente, tabla);
+      const filtrados = filtrarRegistros(registros, filtros);
+
+      totalCasos = filtrados.length;
+      totalPersonas = filtrados.reduce((suma, registro) => suma + Number(registro.npersonas || 0), 0);
+
+      filtrados.forEach(registro => {
+        const departamento = String(registro.departamento || 'Sin departamento').trim() || 'Sin departamento';
+        const clave = claveDepartamento(departamento);
+        if (!mapa.has(clave)) mapa.set(clave, crearAgregadoUnidad(departamento, departamento));
+        const item = mapa.get(clave);
+        if (registro.id) item.casosSet.add(registro.id);
+        item.personas += Number(registro.npersonas || 0);
+        item.mujeres += Number(registro.nmujeres || 0);
+        item.hombres += Number(registro.nhombres || 0);
+        item.menores += Number(registro.nmenores || 0);
+      });
+    }
+
+    const resultado = finalizarIDR(mapa, { totalCasos, totalPersonas });
+    const datosPorClave = new Map();
+    const datosPorNombre = new Map();
+    resultado.lista.forEach(item => {
+      datosPorClave.set(item.clave, item);
+      datosPorNombre.set(normTxt(item.nombre), item);
+    });
+
+    return {
+      unidad,
+      totalCasos,
+      totalPersonas,
+      p95Intensidad: resultado.p95,
+      datos: resultado.lista,
+      datosPorClave,
+      datosPorNombre
+    };
+  }
+
+  function valorMetricaCalor(dato, metrica) {
+    if (!dato) return null;
+    if (metrica === 'casos') return Number(dato.casos || 0);
+    if (metrica === 'personas') return Number(dato.personas || 0);
+    return Number(dato.idr || 0);
+  }
+
+  function etiquetaMetricaCalor(metrica) {
+    if (metrica === 'casos') return 'Casos';
+    if (metrica === 'personas') return 'Personas';
+    return 'IDR';
+  }
+
+  function construirRangosCalor(datos = [], metrica = 'idr') {
+    const cfg = cfgMapaCalor();
+    const colores = cfg.colores;
+    const n = colores.length;
+    const valores = datos.map(d => valorMetricaCalor(d, metrica)).filter(v => Number.isFinite(v));
+
+    if (metrica === 'idr') {
+      const paso = 100 / n;
+      return colores.map((color, i) => {
+        const min = i * paso;
+        const max = (i + 1) * paso;
+        return {
+          min,
+          max,
+          color,
+          etiqueta: `${Math.round(min)} – ${Math.round(max)}`
+        };
+      });
+    }
+
+    const max = Math.max(0, ...valores);
+    if (max <= 0) {
+      return colores.map((color, i) => ({
+        min: 0,
+        max: 0,
+        color,
+        etiqueta: i === 0 ? '0' : 'Sin rango'
+      }));
+    }
+
+    const paso = max / n;
+    return colores.map((color, i) => {
+      const min = i * paso;
+      const maxR = i === n - 1 ? max : (i + 1) * paso;
+      return {
+        min,
+        max: maxR,
+        color,
+        etiqueta: `${formatoNumero(Math.round(min))} – ${formatoNumero(Math.ceil(maxR))}`
+      };
+    });
+  }
+
+  function colorPorValorCalor(valor, rangos) {
+    const cfg = cfgMapaCalor();
+    const v = Number(valor);
+    if (!Number.isFinite(v)) return cfg.colorSinDato;
+    if (!Array.isArray(rangos) || !rangos.length) return cfg.colorSinDato;
+
+    for (let i = 0; i < rangos.length; i += 1) {
+      const r = rangos[i];
+      if (i === rangos.length - 1) {
+        if (v >= r.min && v <= r.max) return r.color;
+      } else if (v >= r.min && v < r.max) {
+        return r.color;
+      }
+    }
+    return rangos[rangos.length - 1]?.color || cfg.colorSinDato;
+  }
+
+  function obtenerDatoMapaCalorFeature(feature, capaConfig) {
+    const state = window.SIG_STATE || {};
+    const calor = state.mapaCalor;
+    if (!calor?.activo || !capaConfig) return null;
+    const layerId = calor.unidad === 'municipios' ? 'municipios' : 'departamentos';
+    if (capaConfig.id !== layerId) return null;
+
+    const claveInfo = obtenerClaveFeatureMapaCalor(feature, calor.unidad);
+    return calor.datosPorClave?.get(claveInfo.clave)
+      || calor.datosPorNombre?.get(claveInfo.claveAlterna)
+      || null;
+  }
+
+  function obtenerEstiloDepartamentoCalor(feature, capaConfig, estiloBase = {}) {
+    const state = window.SIG_STATE || {};
+    const calor = state.mapaCalor;
+    if (!calor?.activo || !capaConfig) return null;
+
+    const layerId = calor.unidad === 'municipios' ? 'municipios' : 'departamentos';
+    if (capaConfig.id !== layerId) return null;
+
+    const cfg = cfgMapaCalor();
+    const dato = obtenerDatoMapaCalorFeature(feature, capaConfig);
+    const valor = dato ? valorMetricaCalor(dato, calor.metrica) : null;
+    const fillColor = dato ? colorPorValorCalor(valor, calor.rangos) : cfg.colorSinDato;
+
+    return {
+      ...estiloBase,
+      pane: capaConfig.pane,
+      color: cfg.colorBorde,
+      weight: cfg.grosorLinea,
+      opacity: 1,
+      fillColor,
+      fillOpacity: dato ? cfg.opacidad : 0.45
+    };
+  }
+
+  function crearPopupMapaCalor(feature, capaConfig, nombreCapa = 'Capa') {
+    const state = window.SIG_STATE || {};
+    const calor = state.mapaCalor;
+    if (!calor?.activo || !capaConfig) return null;
+
+    const layerId = calor.unidad === 'municipios' ? 'municipios' : 'departamentos';
+    if (capaConfig.id !== layerId) return null;
+
+    const claveInfo = obtenerClaveFeatureMapaCalor(feature, calor.unidad);
+    const dato = obtenerDatoMapaCalorFeature(feature, capaConfig);
+    const unidadLabel = calor.unidad === 'municipios' ? 'Municipio' : 'Departamento';
+    const filtrosTexto = textoFiltrosActivos(calor.filtros || {});
+
+    if (!dato) {
+      return `
+        <div class="sig-popup-calor" style="min-width:260px; max-width:390px">
+          <div class="fw-bold mb-1">${escapeHtml(claveInfo.nombre || nombreCapa)}</div>
+          <div class="small text-muted mb-2">${escapeHtml(unidadLabel)} · ${escapeHtml(etiquetaMetricaCalor(calor.metrica))}</div>
+          <div class="alert alert-light border py-2 mb-2">Sin registros para el filtro activo.</div>
+          <div class="small text-muted">${escapeHtml(filtrosTexto)}</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="sig-popup-calor" style="min-width:280px; max-width:420px">
+        <div class="fw-bold mb-1">${escapeHtml(dato.nombre || claveInfo.nombre || nombreCapa)}</div>
+        <div class="small text-muted mb-2">${escapeHtml(unidadLabel)} · ${escapeHtml(etiquetaMetricaCalor(calor.metrica))}</div>
+        <div class="metric-grid mb-2">
+          <div class="metric-card"><div class="value">${formatoNumero(dato.casos)}</div><div class="label">Casos</div></div>
+          <div class="metric-card"><div class="value">${formatoNumero(dato.personas)}</div><div class="label">Personas</div></div>
+          <div class="metric-card"><div class="value">${formatoNumero(dato.mujeres)}</div><div class="label">Mujeres</div></div>
+          <div class="metric-card"><div class="value">${formatoNumero(dato.hombres)}</div><div class="label">Hombres</div></div>
+          <div class="metric-card"><div class="value">${formatoNumero(dato.menores)}</div><div class="label">Menores</div></div>
+          <div class="metric-card"><div class="value">${Number(dato.idr || 0).toFixed(2)}</div><div class="label">IDR · ${escapeHtml(dato.rango)}</div></div>
+        </div>
+        <table class="table table-sm mb-2"><tbody>
+          <tr><th class="text-muted pe-2">Exposición</th><td>${Number(dato.exposicion || 0).toFixed(4)}</td></tr>
+          <tr><th class="text-muted pe-2">Impacto</th><td>${Number(dato.impacto || 0).toFixed(4)}</td></tr>
+          <tr><th class="text-muted pe-2">Intensidad</th><td>${Number(dato.intensidadRaw || 0).toFixed(2)}</td></tr>
+        </tbody></table>
+        <div class="small text-muted">${escapeHtml(filtrosTexto)}</div>
+      </div>
+    `;
+  }
+
+  function asegurarControlLeyendaCalor() {
+    const state = window.SIG_STATE;
+    if (!state?.mapa || !window.L) return null;
+
+    if (!state.controlLeyendaCalor) {
+      state.controlLeyendaCalor = L.control({ position: 'bottomleft' });
+      state.controlLeyendaCalor.onAdd = function () {
+        const div = L.DomUtil.create('div', 'sig-legend-calor leaflet-control');
+        div.id = 'leyendaMapaCalorSIG';
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      };
+      state.controlLeyendaCalor.addTo(state.mapa);
+    }
+
+    return qs('leyendaMapaCalorSIG');
+  }
+
+  function actualizarLeyendaMapaCalor() {
+    const state = window.SIG_STATE || {};
+    const calor = state.mapaCalor;
+    if (!calor?.activo) {
+      if (state.controlLeyendaCalor && state.mapa) {
+        state.mapa.removeControl(state.controlLeyendaCalor);
+        state.controlLeyendaCalor = null;
+      }
+      return;
+    }
+
+    const contenedor = asegurarControlLeyendaCalor();
+    if (!contenedor) return;
+
+    const cfg = cfgMapaCalor();
+    const rangos = Array.isArray(calor.rangos) ? calor.rangos : [];
+    const items = [
+      `<div class="sig-legend-calor-item"><span class="sig-legend-calor-box" style="background:${escapeHtml(cfg.colorSinDato)}"></span><span>Sin registro</span></div>`,
+      ...rangos.map(r => `<div class="sig-legend-calor-item"><span class="sig-legend-calor-box" style="background:${escapeHtml(r.color)}"></span><span>${escapeHtml(r.etiqueta)}</span></div>`)
+    ].join('');
+
+    contenedor.innerHTML = `
+      <div class="sig-legend-calor-title"><i class="bi bi-grid-3x3-gap"></i>Mapa de calor</div>
+      <div class="sig-legend-calor-subtitle">
+        ${escapeHtml(calor.unidad === 'municipios' ? 'Municipios' : 'Departamentos')} · ${escapeHtml(etiquetaMetricaCalor(calor.metrica))}<br>
+        ${escapeHtml(textoFiltrosActivos(calor.filtros || {}))}
+      </div>
+      <div class="sig-legend-calor-list">${items}</div>
+    `;
+  }
+
+  function refrescarMapaCalorDepartamentos(opciones = {}) {
+    const state = window.SIG_STATE || {};
+    const calor = state.mapaCalor;
+    if (!calor?.activo) return false;
+
+    const layerId = calor.unidad === 'municipios' ? 'municipios' : 'departamentos';
+    const capa = state.capasPorId?.get?.(layerId);
+    const capaConfig = window.SIG_CONFIG?.capas?.find(c => c.id === layerId);
+    if (!capa || !capaConfig) return false;
+
+    const estiloBase = {
+      pane: capaConfig.pane,
+      color: capaConfig.colorLinea,
+      weight: Number(capaConfig.grosorLinea || 1),
+      opacity: Number(capaConfig.opacidad ?? 1),
+      fillColor: capaConfig.colorCapa,
+      fillOpacity: Number(capaConfig.opacidad ?? 1),
+      lineCap: 'round',
+      lineJoin: 'round'
+    };
+
+    capa.setStyle(feature => obtenerEstiloDepartamentoCalor(feature, capaConfig, estiloBase) || estiloBase);
+    actualizarLeyendaMapaCalor();
+    if (!opciones.silencioso) actualizarEstado(`Mapa de calor actualizado · ${layerId}`);
+    return true;
+  }
+
+  async function aplicarMapaCalorSIG(opciones = {}) {
+    const state = window.SIG_STATE;
+    if (!state?.supabaseClient) {
+      pintarPanelCarga('error', 'No se pudo aplicar mapa de calor', 'Supabase no está iniciado.');
+      return false;
+    }
+
+    const controles = leerControlesMapaCalor();
+    const unidad = opciones.unidad || controles.unidad;
+    const metrica = opciones.metrica || controles.metrica;
+    const filtros = filtroActivo();
+    const layerId = unidad === 'municipios' ? 'municipios' : 'departamentos';
+    const boton = qs('btnAplicarMapaCalorSIG');
+    const textoOriginal = boton?.innerHTML;
+
+    establecerControlesMapaCalor(unidad, metrica);
+    if (boton && !opciones.silencioso) {
+      boton.disabled = true;
+      boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Calculando...';
+    }
+
+    try {
+      const resultado = await calcularDatosMapaCalor(state.supabaseClient, unidad, filtros);
+      const rangos = construirRangosCalor(resultado.datos, metrica);
+
+      state.mapaCalor = {
+        activo: true,
+        unidad,
+        metrica,
+        filtros,
+        fecha: new Date().toISOString(),
+        totalCasos: resultado.totalCasos,
+        totalPersonas: resultado.totalPersonas,
+        p95Intensidad: resultado.p95Intensidad,
+        datos: resultado.datos,
+        datosPorClave: resultado.datosPorClave,
+        datosPorNombre: resultado.datosPorNombre,
+        rangos
+      };
+
+      if (!state.capasPorId?.has?.(layerId) && window.SIG_CAPAS?.activarCapaPorId) {
+        await window.SIG_CAPAS.activarCapaPorId(layerId);
+      }
+
+      refrescarMapaCalorDepartamentos({ silencioso: true });
+      actualizarLeyendaMapaCalor();
+
+      const estado = qs('estadoMapaCalorSIG');
+      if (estado) {
+        estado.innerHTML = `Activo: <b>${escapeHtml(unidad === 'municipios' ? 'Municipios' : 'Departamentos')}</b> · <b>${escapeHtml(etiquetaMetricaCalor(metrica))}</b><br>${escapeHtml(textoFiltrosActivos(filtros))}`;
+      }
+      actualizarEstado(`Mapa de calor aplicado · ${unidad} · ${etiquetaMetricaCalor(metrica)} · ${formatoNumero(resultado.datos.length)} unidades`);
+      return true;
+    } catch (err) {
+      const mensaje = err?.message || 'No se pudo calcular el mapa de calor.';
+      const estado = qs('estadoMapaCalorSIG');
+      if (estado) estado.textContent = mensaje;
+      actualizarEstado('Mapa de calor pendiente');
+      if (!opciones.silencioso) pintarPanelCarga('error', 'No se pudo aplicar mapa de calor', mensaje);
+      return false;
+    } finally {
+      if (boton && !opciones.silencioso) {
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal || '<i class="bi bi-grid-3x3-gap me-1"></i>Aplicar mapa de calor';
+      }
+    }
+  }
+
+  function limpiarMapaCalorSIG() {
+    const state = window.SIG_STATE;
+    if (!state) return false;
+
+    const calorPrevio = state.mapaCalor;
+    state.mapaCalor = null;
+    actualizarLeyendaMapaCalor();
+
+    const layerIds = calorPrevio?.unidad === 'municipios' ? ['municipios'] : ['departamentos'];
+    layerIds.forEach(layerId => {
+      const capa = state.capasPorId?.get?.(layerId);
+      const capaConfig = window.SIG_CONFIG?.capas?.find(c => c.id === layerId);
+      if (capa && capaConfig) {
+        const estiloBase = {
+          pane: capaConfig.pane,
+          color: capaConfig.colorLinea,
+          weight: Number(capaConfig.grosorLinea || 1),
+          opacity: Number(capaConfig.opacidad ?? 1),
+          fillColor: capaConfig.colorCapa,
+          fillOpacity: Number(capaConfig.opacidad ?? 1),
+          lineCap: 'round',
+          lineJoin: 'round'
+        };
+        capa.setStyle(estiloBase);
+      }
+    });
+
+    const estado = qs('estadoMapaCalorSIG');
+    if (estado) estado.textContent = 'Sin mapa de calor aplicado.';
+    actualizarEstado('Mapa de calor limpio');
+    return true;
+  }
+
+  async function refrescarMapaCalorSiActivo() {
+    const state = window.SIG_STATE || {};
+    if (!state.mapaCalor?.activo) return false;
+    return aplicarMapaCalorSIG({
+      unidad: state.mapaCalor.unidad,
+      metrica: state.mapaCalor.metrica,
+      silencioso: true
+    });
+  }
+
   function noop() {
     return false;
-  }
-
-  function obtenerEstiloDepartamentoCalor() {
-    return null;
-  }
-
-  function crearPopupDepartamentoCalor() {
-    return null;
   }
 
   window.SIG_DATOS = {
@@ -1294,10 +1958,14 @@
     aplicarFiltrosCombinadosSIG,
     limpiarFiltrosCombinadosSIG,
     pintarRegistrosEnMapa,
-    aplicarMapaCalorDepartamentos: noop,
-    limpiarMapaCalorDepartamentos: noop,
-    refrescarMapaCalorDepartamentos: noop,
+    aplicarMapaCalorDepartamentos: aplicarMapaCalorSIG,
+    limpiarMapaCalorDepartamentos: limpiarMapaCalorSIG,
+    refrescarMapaCalorDepartamentos,
+    aplicarMapaCalorSIG,
+    limpiarMapaCalorSIG,
+    refrescarMapaCalorSiActivo,
     obtenerEstiloDepartamentoCalor,
-    crearPopupDepartamentoCalor
+    crearPopupDepartamentoCalor: crearPopupMapaCalor,
+    crearPopupMapaCalor
   };
 })();

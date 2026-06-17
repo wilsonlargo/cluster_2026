@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>SIG · Observatorio</title>
-<!-- SIG LIMPIO SIN CONSOLA · PANEL DE FILTROS EN BLANCO · v2 -->
+<!-- SIG · consola terminal v6 compatible con vista publica actual -->
 <!-- Bootstrap 5: estructura responsiva y componentes visuales como offcanvas y collapse. -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
 <!-- Bootstrap Icons: iconos de menús, capas, filtros y controles. -->
@@ -354,6 +354,451 @@
       margin-top: .15rem;
     }
 
+    .sig-legend-calor {
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, .18);
+      padding: .75rem .8rem;
+      min-width: 230px;
+      max-width: min(330px, 82vw);
+      color: #0f172a;
+      font-size: .78rem;
+    }
+
+    .sig-legend-calor-title {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .sig-legend-calor-subtitle {
+      color: var(--sig-muted);
+      font-size: .72rem;
+      line-height: 1.25;
+      margin-bottom: .55rem;
+    }
+
+    .sig-legend-calor-list {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+
+    .sig-legend-calor-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: .45rem;
+      align-items: center;
+    }
+
+    .sig-legend-calor-box {
+      width: 26px;
+      height: 16px;
+      border-radius: .3rem;
+      border: 1px solid rgba(15, 23, 42, .18);
+    }
+
+    .sig-popup-calor .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .4rem;
+    }
+
+    .sig-popup-calor .metric-card {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .65rem;
+      padding: .45rem .5rem;
+      background: #f8fafc;
+    }
+
+    .sig-popup-calor .metric-card .value {
+      font-weight: 800;
+      font-size: .95rem;
+      line-height: 1;
+    }
+
+    .sig-popup-calor .metric-card .label {
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .15rem;
+    }
+
+
+    .console-login-card,
+    .console-query-item,
+    .console-toolbar,
+    .console-help {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .9rem;
+    }
+
+    .console-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .console-help {
+      background: #f8fafc;
+      color: var(--sig-muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .console-query-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      border-bottom: 1px solid rgba(15, 23, 42, .08);
+      padding-bottom: .6rem;
+    }
+
+    .console-empty,
+    .console-loading {
+      border: 1px dashed rgba(15, 23, 42, .18);
+      border-radius: .85rem;
+      background: #f8fafc;
+      color: var(--sig-muted);
+      padding: .75rem;
+      font-size: .82rem;
+    }
+
+    .console-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .5rem;
+    }
+
+    .console-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      background: #f8fafc;
+      padding: .55rem .65rem;
+    }
+
+    .console-stat div {
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .console-stat span {
+      display: block;
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .18rem;
+    }
+
+    .console-table-wrap {
+      max-height: 360px;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      overflow: auto;
+    }
+
+
+
+
+    /* Consola inferior tipo terminal. */
+    .sig-console-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1600;
+      height: min(46vh, 430px);
+      background: #1f2428;
+      color: #f8fafc;
+      border-top: 1px solid rgba(255,255,255,.24);
+      box-shadow: 0 -18px 45px rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      transition: transform .22s ease;
+    }
+
+    .sig-console-dock.collapsed {
+      transform: translateY(calc(100% + 8px));
+    }
+
+    .sig-console-topbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .55rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.24);
+      background: #202529;
+      flex-wrap: wrap;
+    }
+
+    .sig-console-close,
+    .sig-console-action,
+    .sig-console-btn,
+    .sig-console-icon {
+      background: transparent;
+      color: #f8fafc;
+      border: 0;
+      border-radius: .35rem;
+      padding: .35rem .55rem;
+      font-weight: 700;
+    }
+
+    .sig-console-close {
+      font-size: 1.15rem;
+      color: #ffffff;
+      padding-inline: .65rem;
+    }
+
+    .sig-console-action:hover,
+    .sig-console-btn:hover,
+    .sig-console-icon:hover,
+    .sig-console-close:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .sig-console-action-primary,
+    .sig-console-btn-primary {
+      color: #67e8f9;
+    }
+
+    .sig-console-select,
+    .sig-console-input,
+    .sig-console-command-input,
+    .sig-console-textarea {
+      background: #1f2428;
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,.65);
+      border-radius: .45rem;
+      outline: none;
+    }
+
+    .sig-console-select {
+      min-width: 270px;
+      max-width: min(420px, 80vw);
+      padding: .45rem .65rem;
+    }
+
+    .sig-console-auth {
+      margin-left: auto;
+      display: flex;
+      gap: .45rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .sig-console-input {
+      width: 160px;
+      padding: .35rem .5rem;
+    }
+
+    .sig-console-user {
+      color: #a7f3d0;
+      font-size: .82rem;
+    }
+
+    .sig-console-commandbar {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: .6rem;
+      padding: .55rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.16);
+      background: #171b1f;
+    }
+
+    .sig-console-mainprompt {
+      color: #67e8f9;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sig-console-command-input {
+      width: 100%;
+      padding: .45rem .6rem;
+      border-color: rgba(103,232,249,.55);
+    }
+
+    .sig-console-msg {
+      min-height: 24px;
+      padding: .25rem .75rem;
+      font-size: .78rem;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .sig-console-msg-info { color: #cbd5e1; }
+    .sig-console-msg-ok { color: #86efac; }
+    .sig-console-msg-warn { color: #fde68a; }
+    .sig-console-msg-error { color: #fca5a5; }
+
+    .sig-console-items {
+      overflow: auto;
+      flex: 1;
+      padding: .5rem .75rem 1rem;
+    }
+
+    .sig-console-empty,
+    .sig-console-loading,
+    .sig-console-error {
+      color: #cbd5e1;
+      border: 1px dashed rgba(255,255,255,.25);
+      border-radius: .45rem;
+      padding: .65rem;
+      margin: .35rem 0;
+      font-size: .82rem;
+    }
+
+    .sig-console-error {
+      color: #fecaca;
+      border-color: rgba(248,113,113,.45);
+    }
+
+    .sig-console-item {
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: .45rem;
+      margin-bottom: .5rem;
+      overflow: hidden;
+      background: #202529;
+    }
+
+    .sig-console-line {
+      display: grid;
+      grid-template-columns: auto 1fr 56px 56px 56px 56px;
+      align-items: stretch;
+      border-bottom: 1px solid rgba(255,255,255,.22);
+    }
+
+    .sig-console-prompt {
+      color: #67e8f9;
+      padding: .55rem .6rem;
+      font-weight: 800;
+      border-right: 1px solid rgba(255,255,255,.20);
+    }
+
+    .sig-console-textarea {
+      width: 100%;
+      min-height: 46px;
+      resize: vertical;
+      border: 0;
+      border-radius: 0;
+      padding: .55rem .65rem;
+      background: #202529;
+      color: #f8fafc;
+    }
+
+    .sig-console-icon {
+      border-left: 1px solid rgba(255,255,255,.20);
+      border-radius: 0;
+      color: #67e8f9;
+      font-size: 1.35rem;
+    }
+
+    .sig-console-delete {
+      color: #fb7185;
+    }
+
+    .sig-console-copy {
+      color: #a7f3d0;
+    }
+
+    .sig-console-clear {
+      color: #fde68a;
+    }
+
+    .sig-console-marker-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.75);
+      margin-right: .35rem;
+      vertical-align: middle;
+    }
+
+    .sig-console-map-pill {
+      color: #bae6fd;
+    }
+
+    .sig-console-file-input {
+      display: none;
+    }
+
+    .sig-console-result {
+      background: #111417;
+    }
+
+    .sig-console-summary {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      padding: .45rem .6rem;
+      color: #cbd5e1;
+      font-size: .76rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .sig-console-summary span {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: .15rem .45rem;
+    }
+
+    .sig-console-table-wrap {
+      overflow: auto;
+      max-height: 210px;
+    }
+
+    .sig-console-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+      color: #e5e7eb;
+    }
+
+    .sig-console-table th,
+    .sig-console-table td {
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      padding: .35rem .45rem;
+      vertical-align: top;
+    }
+
+    .sig-console-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #1f2933;
+      color: #a7f3d0;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sig-console-cat {
+      max-width: 420px;
+      min-width: 170px;
+    }
+
+    .sig-console-empty-cell {
+      color: #cbd5e1;
+      text-align: center;
+      padding: .8rem !important;
+    }
+
+    @media (max-width: 768px) {
+      .sig-console-dock { height: min(58vh, 520px); }
+      .sig-console-line { grid-template-columns: auto 1fr 42px 42px 42px 42px; }
+      .sig-console-auth { width: 100%; margin-left: 0; }
+      .sig-console-input { width: min(220px, 46vw); }
+      .sig-console-select { min-width: min(260px, 72vw); }
+    }
+
     @media (max-width: 576px) {
       :root {
         --topbar-h: 58px;
@@ -397,6 +842,17 @@
 <i class="bi bi-funnel me-1"></i>Filtros
             </button>
 </li>
+<li class="nav-item">
+<button aria-controls="panelFiltros" class="nav-link btn btn-link" data-bs-target="#panelFiltros" data-bs-toggle="offcanvas" id="btnAbrirMapaCalor" type="button">
+<i class="bi bi-grid-3x3-gap me-1"></i>Mapa de calor
+            </button>
+</li>
+
+<li class="nav-item">
+<button class="nav-link btn btn-link" id="btnToggleConsolaSIG" type="button">
+<i class="bi bi-terminal me-1"></i>Consola
+            </button>
+</li>
 </ul>
 <div class="d-flex align-items-center gap-2 small text-muted">
 <i class="bi bi-info-circle"></i>
@@ -430,10 +886,39 @@
 </div>
 <div class="offcanvas-body"><div data-estado="en-blanco" id="panelFiltrosContenido"></div></div>
 </aside>
+
 <!-- Área principal del SIG. -->
 <main class="sig-map-wrap">
 <div aria-label="Mapa SIG del Observatorio" id="mapaSIG"></div>
 </main>
+
+<!-- Consola inferior tipo terminal. -->
+<section id="consolaSIGDock" class="sig-console-dock collapsed" aria-label="Consola SIG">
+  <div class="sig-console-topbar">
+    <button id="btnCerrarConsolaSIG" class="sig-console-close" type="button" aria-label="Cerrar consola">X</button>
+    <select id="consolaPreset" class="sig-console-select" aria-label="Consultas rápidas">
+      <option value="">Filtro extendido</option>
+      <option value='grupo:departamento año:2026'>Por departamento · año 2026</option>
+      <option value='grupo:municipio año:2026 ordenar:idr limite:50'>Por municipio · IDR 2026</option>
+      <option value='grupo:macrotipo año:2026 personas&gt;0'>Por macrotipo · con personas</option>
+      <option value='grupo:pueblo año:2026 detalle:"amenaza"'>Por pueblo · detalle contiene amenaza</option>
+      <option value='grupo:fuente año:2026 fuente:"Defensoría"'>Por fuente</option>
+    </select>
+    <button id="btnConsolaGuardarLista" class="sig-console-action" type="button">Guardar lista</button>
+    <button id="btnConsolaCargarLista" class="sig-console-action" type="button">Cargar lista</button>
+    <input id="archivoConsolaLista" class="sig-console-file-input" type="file" accept="application/json,.json" />
+    <button id="btnConsolaLimpiarTodo" class="sig-console-action" type="button">Limpiar</button>
+    <button id="btnConsolaAgregar" class="sig-console-action" type="button">Agregar</button>
+    <button id="btnConsolaEjecutarTodo" class="sig-console-action sig-console-action-primary" type="button">Ejecutar</button>
+    <div id="consolaAuthZona" class="sig-console-auth"></div>
+  </div>
+  <div class="sig-console-commandbar">
+    <span class="sig-console-mainprompt">consulta =&gt;</span>
+    <input id="consolaComando" class="sig-console-command-input" type="text" spellcheck="false" placeholder='grupo:departamento año:2026 macrotipo:"Confinamiento" detalle:"amenaza" personas&gt;100 ordenar:idr limite:50' />
+  </div>
+  <div id="consolaMensaje" class="sig-console-msg sig-console-msg-info"></div>
+  <div id="consolaItems" class="sig-console-items"></div>
+</section>
 <!-- Bootstrap JS: activa offcanvas, dropdowns y collapse. -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Leaflet JS: librería principal del mapa. -->
@@ -441,9 +926,11 @@
 <!-- Supabase JS: cliente público para prueba controlada de acceso a la vista sig_casos_public_2026. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Configuración externa de capas, panes, colores y estilo base de casos. -->
-<script src="./configlayers.js?v=20260615-sig-panel-filtros-blanco-v2"></script>
+<script src="./configlayers.js?v=20260617-console-terminal-v6-view-compatible"></script>
 <!-- Lógica externa base del panel de filtros y puntos de casos. -->
-<script src="./datasig.js?v=20260615-sig-panel-filtros-blanco-v2"></script>
+<script src="./datasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<!-- Consola técnica autenticada del SIG. -->
+<script src="./consolasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
 <script>
     // Estado interno del SIG compartido con datasig.js.
     const SIG_STATE = window.SIG_STATE = {
@@ -550,34 +1037,135 @@
       return valor !== null && valor !== undefined && String(valor).trim() !== '';
     }
 
-    // Crea contenido de popup para atributos de GeoJSON usando la configuración de cada layer.
-    function crearPopupDesdePropiedades(feature, capaConfig) {
+    // Respaldo semántico para GeoJSON con nombres de campos distintos.
+    // Mantiene los popups importantes de municipios y resguardos aunque el archivo cambie mayúsculas,
+    // guiones bajos o nombres como NOM_MPIO / NOM_RESGUARDO.
+    function obtenerPropiedadPorEtiqueta(props, etiqueta) {
+      if (!props || !etiqueta) return undefined;
+      const etiquetaNorm = normTxtLocal(etiqueta).replace(/[^a-z0-9]/g, '');
+      const entradas = Object.entries(props);
+
+      const patrones = [];
+      if (etiquetaNorm.includes('municipio')) patrones.push('municip', 'mpio', 'muni');
+      if (etiquetaNorm.includes('departamento') || etiquetaNorm === 'depto') patrones.push('depart', 'depto', 'dpto');
+      if (etiquetaNorm.includes('pueblo')) patrones.push('pueblo', 'etnia', 'etnico');
+      if (etiquetaNorm.includes('nombre')) patrones.push('nombre', 'name', 'nom', 'resguardo', 'resg');
+
+      for (const patron of patrones) {
+        const encontrado = entradas.find(([clave, valor]) => {
+          if (!valorVisible(valor)) return false;
+          const claveNorm = normTxtLocal(clave).replace(/[^a-z0-9]/g, '');
+          return claveNorm.includes(patron);
+        });
+        if (encontrado) return encontrado[1];
+      }
+
+      return undefined;
+    }
+
+    function obtenerValorPopupConfigurado(props, item) {
+      const directo = obtenerPropiedadFlexible(props, item?.campos || item?.campo);
+      if (valorVisible(directo)) return directo;
+      return obtenerPropiedadPorEtiqueta(props, item?.etiqueta || item?.campo);
+    }
+
+    function construirTablaPopupConfigurada(feature, capaConfig) {
       const props = feature?.properties || {};
-      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
       const camposConfigurados = Array.isArray(capaConfig?.popupCampos) ? capaConfig.popupCampos : [];
 
-      let filas = '';
-
       if (camposConfigurados.length) {
-        filas = camposConfigurados.map(item => {
-          const valor = obtenerPropiedadFlexible(props, item.campos || item.campo);
+        const filas = camposConfigurados.map(item => {
+          const valor = obtenerValorPopupConfigurado(props, item);
           if (!valorVisible(valor)) return '';
           return `<tr><th class="text-muted pe-2">${escapeHtml(item.etiqueta || item.campo)}</th><td>${escapeHtml(valor)}</td></tr>`;
         }).join('');
-      } else {
-        const popupDepartamento = window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, nombreCapa);
-        if (popupDepartamento) return popupDepartamento;
 
-        filas = Object.entries(props).slice(0, 8).map(([clave, valor]) => {
-          return `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`;
-        }).join('');
+        if (filas) return `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`;
       }
+
+      const filasGenericas = Object.entries(props)
+        .filter(([, valor]) => valorVisible(valor))
+        .slice(0, 8)
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
+
+      return filasGenericas
+        ? `<table class="table table-sm mb-0"><tbody>${filasGenericas}</tbody></table>`
+        : '<div class="text-muted small">Sin información en los campos configurados.</div>';
+    }
+
+
+    function crearPopupMunicipiosExacto(feature, capaConfig) {
+      const props = feature?.properties || {};
+      const nombre = obtenerPropiedadFlexible(props, ['MPIO_CNMBR']);
+      const departamento = obtenerPropiedadFlexible(props, ['DEPTO']);
+      const filas = [
+        ['Nombre', nombre],
+        ['Departamento', departamento]
+      ]
+        .filter(([, valor]) => valorVisible(valor))
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
 
       const cuerpo = filas
         ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`
-        : '<div class="text-muted small">Sin información en los campos configurados.</div>';
+        : '<div class="text-muted small">Sin información en MPIO_CNMBR / DEPTO.</div>';
 
-      return `<div style="min-width:220px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${cuerpo}</div>`;
+      return `<div class="sig-popup-atributos" style="min-width:220px; max-width:420px"><div class="fw-bold mb-2">${escapeHtml(capaConfig?.nombre || 'Municipios')}</div>${cuerpo}</div>`;
+    }
+
+    function crearPopupResguardosExacto(feature, capaConfig) {
+      const props = feature?.properties || {};
+      const pueblo = obtenerPropiedadFlexible(props, ['PUEBLO', 'Pueblo', 'pueblo', 'ETNIA', 'ETNICO', 'COMUNIDAD']);
+      const departamento = obtenerPropiedadFlexible(props, ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'departamento']);
+      const municipio = obtenerPropiedadFlexible(props, ['MUNICIPIO', 'MPIO_CNMBR', 'NOMBRE_MPI', 'NOM_MPIO', 'municipio']);
+      const nombre = obtenerPropiedadFlexible(props, ['NOMBRE', 'nombre', 'NOMBRE_RES', 'NOM_RESGUARDO', 'RESGUARDO', 'NOM_RESG', 'NOM_RES']);
+      const filas = [
+        ['Pueblo', pueblo],
+        ['Departamento', departamento],
+        ['Municipio', municipio],
+        ['Nombre', nombre]
+      ]
+        .filter(([, valor]) => valorVisible(valor))
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
+
+      const cuerpo = filas
+        ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`
+        : construirTablaPopupConfigurada(feature, capaConfig);
+
+      return `<div class="sig-popup-atributos" style="min-width:240px; max-width:430px"><div class="fw-bold mb-2">${escapeHtml(capaConfig?.nombre || 'Resguardos')}</div>${cuerpo}</div>`;
+    }
+
+    function crearPopupAtributosGeoJSON(feature, capaConfig) {
+      if (capaConfig?.id === 'municipios') return crearPopupMunicipiosExacto(feature, capaConfig);
+      if (capaConfig?.id === 'resguardos') return crearPopupResguardosExacto(feature, capaConfig);
+      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
+      const tabla = construirTablaPopupConfigurada(feature, capaConfig);
+      return `<div class="sig-popup-atributos" style="min-width:220px; max-width:420px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${tabla}</div>`;
+    }
+
+    // Crea contenido de popup para atributos de GeoJSON usando la configuración de cada layer.
+    // Si hay mapa de calor activo, solo se combina con la capa objetivo; no reemplaza los popups
+    // configurados de municipios o resguardos.
+    function crearPopupDesdePropiedades(feature, capaConfig) {
+      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
+      const popupAtributos = crearPopupAtributosGeoJSON(feature, capaConfig);
+      const popupCalor = window.SIG_DATOS?.crearPopupMapaCalor?.(feature, capaConfig, nombreCapa)
+        || window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, capaConfig, nombreCapa);
+
+      if (!popupCalor) return popupAtributos;
+
+      // Departamentos conserva el popup enriquecido del mapa de calor como principal.
+      if (capaConfig?.id === 'departamentos') return popupCalor;
+
+      // Municipios conserva sus campos de capa y añade el bloque de calor cuando aplique.
+      if (capaConfig?.id === 'municipios') {
+        return `<div style="min-width:300px; max-width:460px">${popupAtributos}<hr class="my-2">${popupCalor}</div>`;
+      }
+
+      // Resguardos y demás capas nunca se reemplazan por el mapa de calor.
+      return popupAtributos;
     }
 
     // Abre un popup Leaflet real sobre el punto exacto del clic.
@@ -770,7 +1358,7 @@
       SIG_STATE.capasPorId.set(capaConfig.id, capaLeaflet);
       capaConfig.activa = true;
       actualizarColorIndicador(capaConfig);
-      if (capaConfig.id === 'departamentos') {
+      if (capaConfig.id === 'departamentos' || capaConfig.id === 'municipios') {
         asegurarDepartamentosClicables();
         window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
       }
@@ -809,7 +1397,7 @@
           }
         });
       }
-      if (capaConfig.id === 'departamentos') {
+      if (capaConfig.id === 'departamentos' || capaConfig.id === 'municipios') {
         asegurarDepartamentosClicables();
         window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
       }
@@ -1091,6 +1679,13 @@
       if (window.SIG_DATOS?.inicializar) {
         await window.SIG_DATOS.inicializar();
       }
+
+      qs('btnAbrirMapaCalor')?.addEventListener('click', () => {
+        window.setTimeout(() => {
+          const target = qs('bloqueMapaCalorSIG');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+      });
 
       window.addEventListener('resize', () => mapa.invalidateSize());
       qs('panelCapas')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
