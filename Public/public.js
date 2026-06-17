@@ -813,7 +813,7 @@
       await switchMap('departamentos');
       qs('btnCopiarTabla')?.addEventListener('click', copyTable);
       window.addEventListener('resize', () => state.map?.invalidateSize());
-      updateStatus(`Módulo público listo · ${fmt(state.historico.total.casos)} casos · ${fmt(state.historico.total.personas)} personas.`);
+      updateStatus(`Módulo público · ${fmt(state.historico.total.casos)} casos · ${fmt(state.historico.total.personas)} personas.`);
       hideLoading();
     } catch (err) {
       console.error(err);
