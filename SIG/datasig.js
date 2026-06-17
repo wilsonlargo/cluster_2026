@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '20260617-console-terminal-v5-popup-fix';
+  const VERSION = '20260617-console-terminal-v6-view-compatible';
   const ANIO_INICIO = 2016;
 
   const CAMPOS_CORE_SIG = [
@@ -33,8 +33,14 @@
     'contextual_info',
     'detalle',
     'detalle_lugar',
+    'fuente',
+    'fechafuente',
+    'enlace'
   ].join(',');
 
+  // Solo columnas que existen en public.sig_casos_public_2026.
+  // Los campos ampliados del popup (detalle, fuente, enlace, contexto, etc.)
+  // se toman después desde casos_2026 y se cruzan por caso_id.
   const CAMPOS_VISTA_SIG = [
     'punto_id',
     'caso_id',
@@ -53,10 +59,7 @@
     'nhombres',
     'nmenores',
     'macroactor',
-    'contextual_type',
-    'contextual_info',
-    'detalle',
-    'detalle_lugar',
+    'contextual_type'
   ].join(',');
 
   window.SIG_DATOS_VERSION = VERSION;
@@ -952,6 +955,8 @@
       ['Mujeres', formatoNumero(registro.nmujeres)],
       ['Hombres', formatoNumero(registro.nhombres)],
       ['Menores', formatoNumero(registro.nmenores)],
+      ['Fuente', registro.fuente],
+      ['Fecha fuente', formatoFecha(registro.fechafuente)],
       ['Detalle lugar', registro.detalle_lugar]
     ]
       .filter(([, valor]) => valor !== null && valor !== undefined && String(valor).trim() !== '' && String(valor).trim() !== '0')
