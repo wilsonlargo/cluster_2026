@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>SIG · Observatorio</title>
-<!-- SIG · consola terminal v6 compatible con vista publica actual -->
+<!-- SIG · consola terminal v6 + rutas desplazamientos v5 portapapeles + validación -->
 <!-- Bootstrap 5: estructura responsiva y componentes visuales como offcanvas y collapse. -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
 <!-- Bootstrap Icons: iconos de menús, capas, filtros y controles. -->
@@ -791,6 +791,178 @@
       padding: .8rem !important;
     }
 
+
+    /* Panel de funcionalidades: rutas de desplazamiento. */
+    .rutas-toolbar {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .rutas-file-input {
+      display: none;
+    }
+
+    .rutas-status {
+      border: 1px solid rgba(15, 23, 42, .10);
+      background: #f8fafc;
+      border-radius: .9rem;
+      padding: .7rem .75rem;
+      color: var(--sig-muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .rutas-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .55rem;
+    }
+
+    .rutas-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      background: #fff;
+      padding: .65rem;
+    }
+
+    .rutas-stat .value {
+      font-weight: 850;
+      font-size: 1.05rem;
+      line-height: 1;
+      color: #0f3a5f;
+    }
+
+    .rutas-stat .label {
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .25rem;
+      line-height: 1.15;
+    }
+
+    .rutas-list {
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+    }
+
+    .ruta-item {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .75rem;
+      cursor: pointer;
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .ruta-item:hover,
+    .ruta-item.active {
+      border-color: rgba(13, 110, 253, .40);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+      transform: translateY(-1px);
+    }
+
+    .ruta-item-title {
+      font-weight: 780;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .ruta-item-meta,
+    .ruta-item-place {
+      color: var(--sig-muted);
+      font-size: .78rem;
+      line-height: 1.3;
+    }
+
+    .ruta-item-actions {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      margin-top: .55rem;
+    }
+
+    .ruta-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: .35rem;
+      border: 1px solid rgba(15, 23, 42, .22);
+    }
+
+    .ruta-dot.ok { background: #0ea5e9; }
+    .ruta-dot.warn { background: #f59e0b; }
+    .ruta-dot.empty { background: #e5e7eb; }
+
+    .rutas-detail {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #f8fafc;
+      padding: .85rem;
+      font-size: .82rem;
+      color: #334155;
+    }
+
+    .ruta-popup-title {
+      font-weight: 800;
+      color: #0f3a5f;
+      margin-bottom: .35rem;
+    }
+
+    .ruta-popup-table {
+      font-size: .78rem;
+      margin-bottom: 0;
+    }
+
+    .ruta-popup-table th {
+      color: #64748b;
+      padding-right: .6rem;
+      white-space: nowrap;
+    }
+
+    .ruta-marker-origen {
+      background: #0ea5e9;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, .45);
+    }
+
+    .ruta-marker-destino {
+      background: #be123c;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(190, 18, 60, .45);
+    }
+
+    .ruta-edit-form {
+      border-top: 1px solid rgba(15, 23, 42, .10);
+      margin-top: .85rem;
+      padding-top: .85rem;
+    }
+
+    .ruta-edit-form .form-label {
+      font-size: .74rem;
+      font-weight: 750;
+      color: #475569;
+      margin-bottom: .2rem;
+    }
+
+    .ruta-edit-form .form-control,
+    .ruta-edit-form .form-select {
+      font-size: .8rem;
+      border-radius: .65rem;
+    }
+
+    .ruta-danger-zone {
+      border: 1px dashed rgba(190, 18, 60, .25);
+      background: rgba(190, 18, 60, .035);
+      border-radius: .8rem;
+      padding: .6rem;
+      margin-top: .75rem;
+    }
+
     @media (max-width: 768px) {
       .sig-console-dock { height: min(58vh, 520px); }
       .sig-console-line { grid-template-columns: auto 1fr 42px 42px 42px 42px; }
@@ -848,6 +1020,16 @@
             </button>
 </li>
 
+
+<li class="nav-item dropdown">
+<button aria-expanded="false" class="nav-link dropdown-toggle btn btn-link" data-bs-toggle="dropdown" type="button">
+<i class="bi bi-tools me-1"></i>Funcionalidades
+            </button>
+<ul class="dropdown-menu">
+<li><button class="dropdown-item" data-bs-target="#panelRutasDesplazamientos" data-bs-toggle="offcanvas" type="button"><i class="bi bi-signpost-split me-2"></i>Rutas desplazamientos</button></li>
+</ul>
+</li>
+
 <li class="nav-item">
 <button class="nav-link btn btn-link" id="btnToggleConsolaSIG" type="button">
 <i class="bi bi-terminal me-1"></i>Consola
@@ -886,6 +1068,84 @@
 </div>
 <div class="offcanvas-body"><div data-estado="en-blanco" id="panelFiltrosContenido"></div></div>
 </aside>
+
+
+<!-- Panel lateral de funcionalidades: rutas de desplazamiento. -->
+<aside aria-labelledby="panelRutasDesplazamientosLabel" class="offcanvas offcanvas-end sig-offcanvas-end" id="panelRutasDesplazamientos" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelRutasDesplazamientosLabel"><i class="bi bi-signpost-split me-2"></i>Rutas desplazamientos</h5>
+<div class="sig-help">Carga rutas unificadas, lista desplazamientos, busca coordenadas, permite mover puntos y dibuja origen, destino y línea.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body">
+<div class="rutas-toolbar mb-3">
+  <button class="btn btn-primary btn-sm rounded-pill" id="btnCargarRutasUnificadas" type="button"><i class="bi bi-signpost-split me-1"></i>Cargar rutas unificadas</button>
+  <button class="btn btn-outline-primary btn-sm rounded-pill" id="btnCargarRutasDesplazamientos" type="button"><i class="bi bi-upload me-1"></i>Cargar otro archivo</button>
+  <button class="btn btn-outline-dark btn-sm rounded-pill" id="btnAbrirPegarRutasJson" type="button"><i class="bi bi-clipboard-plus me-1"></i>Pegar JSON</button>
+  <button class="btn btn-outline-success btn-sm rounded-pill" id="btnNuevaRutaDesplazamiento" type="button"><i class="bi bi-plus-circle me-1"></i>Nueva ruta</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnExportarRutasDesplazamientos" type="button"><i class="bi bi-download me-1"></i>Exportar JSON</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnAjustarRutasDesplazamientos" type="button"><i class="bi bi-arrows-fullscreen me-1"></i>Ajustar mapa</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnEliminarRutaDesplazamiento" type="button"><i class="bi bi-x-circle me-1"></i>Eliminar ruta</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnLimpiarRutasDesplazamientos" type="button"><i class="bi bi-trash me-1"></i>Limpiar</button>
+  <input accept="application/json,.json,text/csv,.csv" class="rutas-file-input" id="archivoRutasDesplazamientos" type="file" />
+</div>
+
+<div class="rutas-status mb-3" id="estadoRutasDesplazamientos">
+  Puedes cargar el archivo configurado de rutas unificadas, crear una ruta nueva, editar sus datos, buscar coordenadas, marcar origen/destino sobre el mapa, arrastrar los puntos, eliminar registros y exportar un JSON actualizado con los cambios.
+</div>
+
+<div class="rutas-summary-grid mb-3" id="resumenRutasDesplazamientos">
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Registros</div></div>
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Rutas trazadas</div></div>
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Con punto parcial</div></div>
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="buscarRutasDesplazamientos">Buscar desplazamiento</label>
+  <input class="form-control" id="buscarRutasDesplazamientos" placeholder="Buscar por lugar, departamento, pueblo, actor, año, tipo o personas" type="search" />
+</div>
+
+<div class="rutas-detail mb-3" id="detalleRutaDesplazamiento">
+  Selecciona un desplazamiento de la lista para ver el detalle o marcar puntos.
+</div>
+
+<div class="rutas-list" id="listaRutasDesplazamientos"></div>
+</div>
+</aside>
+
+<!-- Modal para pegar y validar JSON de rutas. -->
+<div class="modal fade" id="modalPegarRutasJson" tabindex="-1" aria-labelledby="modalPegarRutasJsonLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="modalPegarRutasJsonLabel"><i class="bi bi-clipboard-plus me-2"></i>Pegar JSON de rutas</h5>
+          <div class="text-muted small">Pega una ruta individual, un archivo de rutas unificadas o un JSON exportado desde este módulo.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info py-2 small">
+          El validador revisa estructura, origen, destino y coordenadas. Si una ruta no tiene coordenadas, puede agregarse y luego marcarse en el mapa o buscarse por lugar.
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <button class="btn btn-outline-primary btn-sm" id="btnLeerPortapapelesRutas" type="button"><i class="bi bi-clipboard me-1"></i>Leer portapapeles</button>
+          <button class="btn btn-outline-secondary btn-sm" id="btnValidarTextoRutas" type="button"><i class="bi bi-check2-square me-1"></i>Validar</button>
+          <button class="btn btn-outline-danger btn-sm" id="btnLimpiarTextoRutas" type="button"><i class="bi bi-eraser me-1"></i>Limpiar texto</button>
+        </div>
+        <textarea id="textoRutasJsonPegado" class="form-control font-monospace" rows="14" spellcheck="false" placeholder='Pega aquí el JSON de rutas...'></textarea>
+        <div class="mt-3" id="resultadoValidacionRutasJson"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-primary" id="btnAgregarJsonPegadoRutas" disabled><i class="bi bi-plus-circle me-1"></i>Agregar al listado</button>
+        <button type="button" class="btn btn-primary" id="btnReemplazarJsonPegadoRutas" disabled><i class="bi bi-arrow-repeat me-1"></i>Reemplazar listado</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Área principal del SIG. -->
 <main class="sig-map-wrap">
@@ -931,6 +1191,8 @@
 <script src="./datasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
 <!-- Consola técnica autenticada del SIG. -->
 <script src="./consolasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<!-- Funcionalidad externa para rutas de desplazamiento cargadas desde archivo. -->
+<script src="./desplazamientosig.js?v=20260618-rutas-v5-portapapeles-validacion"></script>
 <script>
     // Estado interno del SIG compartido con datasig.js.
     const SIG_STATE = window.SIG_STATE = {
