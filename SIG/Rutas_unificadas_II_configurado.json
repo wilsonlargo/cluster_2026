@@ -1,646 +1,901 @@
 {
-  "tipo_archivo": "rutas_desplazamientos_observatorio",
-  "version": "20260618-rutas-unificadas-configurado-v1",
-  "fuente": "Rutas unificadas II.json",
-  "total": 29,
-  "desplazamientos": [
-    {
-      "id": "qu2inmf5fz9line",
-      "orden": 1,
-      "anio": 2021,
-      "pueblo": "Embera Eyábida",
-      "actor": "ELN",
-      "tipo": "Masivo",
-      "personas": 300,
-      "detalle": "2021 - Pueblo Embera Eyábida, Actor ELN, Tipo Masivo, 300 personas",
-      "lugar_ori": "Ituango",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Ituango",
-      "departamento_des": "Antioquia",
-      "lat_origen": 7.17163748398,
-      "lng_origen": -75.7646752276,
-      "lat_destino": 7.285819544998769,
-      "lng_destino": -75.72302251360115,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "qu2inmf5fz9line": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "7.17163748398",
+                "ini_lng": "-75.7646752276",
+                "end_lat": "7.285819544998769",
+                "end_lng": " -75.72302251360115"
+            },
+            "places": {
+                "ini_mun": "Ituango",
+                "ini_dep": "Antioquia",
+                "end_mun": "Ituango",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021 - Pueblo Embera Eyábida, Actor ELN, Tipo Masivo, 300 personas"
+            }
+        }
     },
-    {
-      "id": "2btijgcsjngline",
-      "orden": 2,
-      "anio": 2018,
-      "pueblo": "Zenú",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Unifamiliar, 1 persona",
-      "personas": null,
-      "detalle": "2018 - Pueblo Zenú, Actor NO IDENTIFICADO, Tipo Unifamiliar, 1 persona",
-      "lugar_ori": "Cáceres",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Cáceres",
-      "departamento_des": "Antioquia",
-      "lat_origen": 7.57831474335,
-      "lng_origen": -75.3523573153,
-      "lat_destino": 7.57831474335,
-      "lng_destino": -75.3523573153,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "2btijgcsjngline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "7.57831474335",
+                "ini_lng": "-75.3523573153",
+                "end_lat": "7.57831474335",
+                "end_lng": "-75.3523573153"
+            },
+            "places": {
+                "ini_mun": "Cáceres",
+                "ini_dep": "Antioquia",
+                "end_mun": "Cáceres",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018 - Pueblo Zenú, Actor NO IDENTIFICADO, Tipo\tUnifamiliar, 1 persona"
+            }
+        }
     },
-    {
-      "id": "q7zv1z9o6yfline",
-      "orden": 3,
-      "anio": 2018,
-      "pueblo": "Zenú",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 300,
-      "detalle": "2018-Pueblo Zenú, Actor NO IDENTIFICADO, Tipo Masivo, 300 personas",
-      "lugar_ori": "Tarazá",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Cáceres",
-      "departamento_des": "Antioquia",
-      "lat_origen": 7.58011943984,
-      "lng_origen": -75.4014092118,
-      "lat_destino": 7.57831474335,
-      "lng_destino": -75.3523573153,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "q7zv1z9o6yfline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "7.58011943984",
+                "ini_lng": "-75.4014092118",
+                "end_lat": "7.57831474335",
+                "end_lng": "-75.3523573153"
+            },
+            "places": {
+                "ini_mun": "Tarazá",
+                "ini_dep": "Antioquia",
+                "end_mun": "Cáceres",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo Zenú, Actor NO IDENTIFICADO, Tipo Masivo, 300 personas"
+            }
+        }
     },
-    {
-      "id": "y3v83piboiline",
-      "orden": 4,
-      "anio": 2020,
-      "pueblo": "Zenú",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 136,
-      "detalle": "2020-Pueblo Zenú, Actor NO IDENTIFICADO, Tipo Masivo, 136 personas",
-      "lugar_ori": "Cáceres",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Cáceres",
-      "departamento_des": "Antioquia",
-      "lat_origen": 7.855417861521251,
-      "lng_origen": -75.20856776495793,
-      "lat_destino": 7.57831474335,
-      "lng_destino": -75.3523573153,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "y3v83piboiline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "7.855417861521251",
+                "ini_lng": " -75.20856776495793",
+                "end_lat": "7.57831474335",
+                "end_lng": "-75.3523573153"
+            },
+            "places": {
+                "ini_mun": "Cáceres",
+                "ini_dep": "Antioquia",
+                "end_mun": "Cáceres",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2020-Pueblo Zenú, Actor NO IDENTIFICADO, Tipo Masivo, 136 personas"
+            }
+        }
     },
-    {
-      "id": "8hqrzank2hkline",
-      "orden": 5,
-      "anio": 2021,
-      "pueblo": "Embera Eyábida",
-      "actor": "ELN",
-      "tipo": "Masivo",
-      "personas": 168,
-      "detalle": "2021-Pueblo Embera Eyábida, Actor ELN, Tipo Masivo, 168 personas",
-      "lugar_ori": "Murindó",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Murindó",
-      "departamento_des": "Antioquia",
-      "lat_origen": 6.484177546912108,
-      "lng_origen": -76.36759838211138,
-      "lat_destino": 6.527988010415524,
-      "lng_destino": -76.41740876850128,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "8hqrzank2hkline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "6.484177546912108",
+                "ini_lng": " -76.36759838211138",
+                "end_lat": "6.527988010415524",
+                "end_lng": " -76.41740876850128"
+            },
+            "places": {
+                "ini_mun": "Murindó",
+                "ini_dep": "Antioquia",
+                "end_mun": "Murindó",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Embera Eyábida, Actor ELN, Tipo Masivo, 168 personas"
+            }
+        }
     },
-    {
-      "id": "z78o7aoykorline",
-      "orden": 6,
-      "anio": 2021,
-      "pueblo": "Embera Eyábida",
-      "actor": "PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 984,
-      "detalle": "2021-Pueblo Embera Eyábida, Actor PARAMILITARES, Tipo Masivo, 984 personas",
-      "lugar_ori": "Dabeiba",
-      "departamento_ori": "Antioquia",
-      "lugar_des": "Dabeiba",
-      "departamento_des": "Antioquia",
-      "lat_origen": 6.975300575730576,
-      "lng_origen": -76.30931726929691,
-      "lat_destino": 6.99811575168,
-      "lng_destino": -76.2616178227,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "z78o7aoykorline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "6.975300575730576",
+                "ini_lng": " -76.30931726929691",
+                "end_lat": "6.99811575168",
+                "end_lng": "-76.2616178227"
+            },
+            "places": {
+                "ini_mun": "Dabeiba",
+                "ini_dep": "Antioquia",
+                "end_mun": "Dabeiba",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Embera Eyábida, Actor PARAMILITARES, Tipo Masivo, 984 personas"
+            }
+        }
     },
-    {
-      "id": "eqhkjxf6mkline",
-      "orden": 7,
-      "anio": 2022,
-      "pueblo": "Jivi",
-      "actor": "D-FARC",
-      "tipo": "Masivo",
-      "personas": 80,
-      "detalle": "2022-Pueblo Jivi, Actor D-FARC, Tipo Masivo, 80 personas, Municipio Pedro Camejo del estado Apure, Venezuela",
-      "lugar_ori": "Arauca",
-      "departamento_ori": "Arauca",
-      "lugar_des": "Arauca",
-      "departamento_des": "Arauca",
-      "lat_origen": 6.3975196609588885,
-      "lng_origen": -68.16129784197065,
-      "lat_destino": 7.07390170095,
-      "lng_destino": -70.748009803,
-      "color": "purple",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "eqhkjxf6mkline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "6.3975196609588885",
+                "ini_lng": " -68.16129784197065",
+                "end_lat": "7.07390170095",
+                "end_lng": "-70.748009803"
+            },
+            "places": {
+                "ini_mun": "Arauca",
+                "ini_dep": "Arauca",
+                "end_mun": "Arauca",
+                "end_dep": "Arauca"
+            },
+            "format_line": {
+                "color": "'purple'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2022-Pueblo Jivi, Actor D-FARC, Tipo Masivo, 80 personas, Municipio Pedro Camejo del estado Apure, Venezuela"
+            }
+        }
     },
-    {
-      "id": "zboqm0rc8iline",
-      "orden": 8,
-      "anio": 2018,
-      "pueblo": "Embera Katyo",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 520,
-      "detalle": "2018-Pueblo Embera Katyo, Actor NO IDENTIFICADO, Tipo Masivo, 520 personas",
-      "lugar_ori": "Barrio San Bernardo",
-      "departamento_ori": "Bogotá",
-      "lugar_des": "Parque Tercer Milenio",
-      "departamento_des": "Bogotá",
-      "lat_origen": 4.592309462359476,
-      "lng_origen": -74.08526842059037,
-      "lat_destino": 4.534850750075722,
-      "lng_destino": -74.11323575059517,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "zboqm0rc8iline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.592309462359476",
+                "ini_lng": " -74.08526842059037",
+                "end_lat": "4.534850750075722",
+                "end_lng": " -74.11323575059517"
+            },
+            "places": {
+                "ini_mun": "Barrio San Bernardo",
+                "ini_dep": "Bogotá",
+                "end_mun": "Parque Tercer Milenio",
+                "end_dep": "Bogotá"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo Embera Katyo, Actor NO IDENTIFICADO, Tipo Masivo, 520 personas"
+            }
+        }
     },
-    {
-      "id": "d2shqlr309dline",
-      "orden": 9,
-      "anio": 2017,
-      "pueblo": "Wounaan",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 1012,
-      "detalle": "2017-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 1012 personas",
-      "lugar_ori": "Timbiquí",
-      "departamento_ori": "Cauca",
-      "lugar_des": "La Sierpe",
-      "departamento_des": "Cauca",
-      "lat_origen": 2.77741263243,
-      "lng_origen": -77.6675621458,
-      "lat_destino": 3.9814297884597813,
-      "lng_destino": -77.24638934123841,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "d2shqlr309dline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "2.77741263243",
+                "ini_lng": "-77.6675621458",
+                "end_lat": "3.9814297884597813",
+                "end_lng": " -77.24638934123841"
+            },
+            "places": {
+                "ini_mun": "Timbiquí",
+                "ini_dep": "Cauca",
+                "end_mun": "La Sierpe",
+                "end_dep": "Cauca"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2017-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 1012 personas"
+            }
+        }
     },
-    {
-      "id": "ij7bb8jly4hline",
-      "orden": 10,
-      "anio": 2019,
-      "pueblo": "No determina",
-      "actor": "ELN|EPL",
-      "tipo": "Masivo",
-      "personas": 300,
-      "detalle": "2019-Pueblo No determina, Actor ELN|EPL, Tipo Masivo, 300 personas",
-      "lugar_ori": "Vereda el Crucero",
-      "departamento_ori": "Cauca",
-      "lugar_des": "Vereda Rionegro",
-      "departamento_des": "Cauca",
-      "lat_origen": 2.390606309810677,
-      "lng_origen": -76.60609549519145,
-      "lat_destino": 2.00004455539062,
-      "lng_destino": -76.66595503947119,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "ij7bb8jly4hline": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "2.390606309810677",
+                "ini_lng": " -76.60609549519145",
+                "end_lat": "2.00004455539062",
+                "end_lng": " -76.66595503947119"
+            },
+            "places": {
+                "ini_mun": "Vereda el Crucero",
+                "ini_dep": "Cauca",
+                "end_mun": "Vereda Rionegro",
+                "end_dep": "Cauca"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2019-Pueblo No determina, Actor ELN|EPL, Tipo Masivo, 300 personas"
+            }
+        }
     },
-    {
-      "id": "9sj9liorqvmark",
-      "orden": 11,
-      "anio": 2019,
-      "pueblo": "Embera Dobida",
-      "actor": "PARAMILITARES",
-      "tipo": "masivo",
-      "personas": 1120,
-      "detalle": "2019-Pueblo Embera Dobida, Actor PARAMILITARES, Tipo masivo, 1120 personas",
-      "lugar_ori": "Alto Baudó",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Apartadó",
-      "departamento_des": "Chocó",
-      "lat_origen": 5.5152777777778,
-      "lng_origen": -76.974722222222,
-      "lat_destino": 5.39090614387,
-      "lng_destino": -76.9758160819,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "9sj9liorqvmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.5152777777778",
+                "ini_lng": " -76.974722222222",
+                "end_lat": "5.39090614387",
+                "end_lng": "-76.9758160819"
+            },
+            "places": {
+                "ini_mun": "Alto Baudó",
+                "ini_dep": "Chocó",
+                "end_mun": "Apartadó",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2019-Pueblo Embera Dobida, Actor PARAMILITARES, Tipo masivo, 1120 personas"
+            }
+        }
     },
-    {
-      "id": "wul7rodvjs8mark",
-      "orden": 12,
-      "anio": 2021,
-      "pueblo": "Embera Katyo",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 196,
-      "detalle": "2021-Pueblo Embera Katyo, Actor NO IDENTIFICADO, Tipo Masivo, 196 personas",
-      "lugar_ori": "Carmen del darién",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Medellín",
-      "departamento_des": "Antioquia",
-      "lat_origen": 5.8983333333333,
-      "lng_origen": -76.143055555556,
-      "lat_destino": 6.24858636743,
-      "lng_destino": -75.5760017134,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "wul7rodvjs8mark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.8983333333333",
+                "ini_lng": " -76.143055555556",
+                "end_lat": "6.24858636743",
+                "end_lng": "-75.5760017134"
+            },
+            "places": {
+                "ini_mun": "Carmen del darién",
+                "ini_dep": "Chocó",
+                "end_mun": "Medellín",
+                "end_dep": "Antioquia"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Embera Katyo, Actor NO IDENTIFICADO, Tipo Masivo, 196 personas"
+            }
+        }
     },
-    {
-      "id": "u2xcueqsgeomark",
-      "orden": 13,
-      "anio": 2017,
-      "pueblo": "Wounaan",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 134,
-      "detalle": "2017-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 134 personas",
-      "lugar_ori": "Chagpien tordó",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Buenaventura",
-      "departamento_des": "Valle del cauca",
-      "lat_origen": 4.337422105585453,
-      "lng_origen": -77.0174331,
-      "lat_destino": 3.87580334574,
-      "lng_destino": -77.0117477782,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "u2xcueqsgeomark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.337422105585453",
+                "ini_lng": " -77.0174331",
+                "end_lat": "3.87580334574",
+                "end_lng": "-77.0117477782"
+            },
+            "places": {
+                "ini_mun": "Chagpien tordó",
+                "ini_dep": "Chocó",
+                "end_mun": "Buenaventura",
+                "end_dep": "Valle del cauca"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2017-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 134 personas"
+            }
+        }
     },
-    {
-      "id": "prkqm2dq0xhmark",
-      "orden": 14,
-      "anio": 2018,
-      "pueblo": "Wounaan",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 106,
-      "detalle": "2018-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 106 personas",
-      "lugar_ori": "Chagpiene Tordó",
-      "departamento_ori": "Valle del cauca",
-      "lugar_des": "Litoral San Juan",
-      "departamento_des": "Chocó",
-      "lat_origen": 4.339346712346141,
-      "lng_origen": -77.01729256898544,
-      "lat_destino": 4.2586111111111,
-      "lng_destino": -77.3675,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "prkqm2dq0xhmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.339346712346141",
+                "ini_lng": " -77.01729256898544",
+                "end_lat": "﻿4.2586111111111",
+                "end_lng": " -77.3675"
+            },
+            "places": {
+                "ini_mun": "Chagpiene Tordó",
+                "ini_dep": "Valle del cauca",
+                "end_mun": "Litoral San Juan",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo Wounaan, Actor NO IDENTIFICADO, Tipo Masivo, 106 personas"
+            }
+        }
     },
-    {
-      "id": "ukttw0vzw5pmark",
-      "orden": 15,
-      "anio": 2016,
-      "pueblo": "Wounaan",
-      "actor": "FFMM|ELN",
-      "tipo": "Masivo",
-      "personas": 150,
-      "detalle": "2016-Pueblo Wounaan, Actor FFMM|ELN, Tipo Masivo, 150 personas",
-      "lugar_ori": "Tadó",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Tarena",
-      "departamento_des": "Chocó",
-      "lat_origen": 5.26482627108,
-      "lng_origen": -76.5584839714,
-      "lat_destino": 5.3464628432252885,
-      "lng_destino": -76.52886924656232,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "ukttw0vzw5pmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.26482627108",
+                "ini_lng": "-76.5584839714",
+                "end_lat": "5.3464628432252885",
+                "end_lng": " -76.52886924656232"
+            },
+            "places": {
+                "ini_mun": "Tadó",
+                "ini_dep": "Chocó",
+                "end_mun": "Tarena",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2016-Pueblo Wounaan, Actor FFMM|ELN, Tipo Masivo, 150 personas"
+            }
+        }
     },
-    {
-      "id": "9io491kx5dwmark",
-      "orden": 16,
-      "anio": 2018,
-      "pueblo": "No determina",
-      "actor": "FFMM|ELN",
-      "tipo": "Masivo",
-      "personas": 330,
-      "detalle": "2018-Pueblo No determina, Actor FFMM|ELN, Tipo Masivo, 330 personas",
-      "lugar_ori": "Bajo Baudó",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Orpua",
-      "departamento_des": "Chocó",
-      "lat_origen": 4.532615735625881,
-      "lng_origen": -77.2230545341025,
-      "lat_destino": 4.572850077572525,
-      "lng_destino": -77.31993297135567,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "9io491kx5dwmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.532615735625881",
+                "ini_lng": " -77.2230545341025",
+                "end_lat": "4.572850077572525",
+                "end_lng": " -77.31993297135567"
+            },
+            "places": {
+                "ini_mun": "Bajo Baudó",
+                "ini_dep": "Chocó",
+                "end_mun": "Orpua",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo No determina, Actor FFMM|ELN, Tipo Masivo, 330 personas"
+            }
+        }
     },
-    {
-      "id": "lusada8npgdmark",
-      "orden": 17,
-      "anio": 2020,
-      "pueblo": "Embera Dobida",
-      "actor": "PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 916,
-      "detalle": "2020-Pueblo Embera Dobida, Actor PARAMILITARES, Tipo Masivo, 916 personas",
-      "lugar_ori": "Bahía Solano",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Bahía Solano II",
-      "departamento_des": "Chocó",
-      "lat_origen": 6.2241666666667,
-      "lng_origen": -77.403888888889,
-      "lat_destino": 6.2241666666667,
-      "lng_destino": -77.403888888889,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "lusada8npgdmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "6.2241666666667",
+                "ini_lng": " -77.403888888889",
+                "end_lat": "6.2241666666667",
+                "end_lng": " -77.403888888889"
+            },
+            "places": {
+                "ini_mun": "Bahía Solano",
+                "ini_dep": "Chocó",
+                "end_mun": "Bahía Solano II",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2020-Pueblo Embera Dobida, Actor PARAMILITARES, Tipo Masivo, 916 personas"
+            }
+        }
     },
-    {
-      "id": "n5oyivwqnnimark",
-      "orden": 18,
-      "anio": 2021,
-      "pueblo": "Wounaan",
-      "actor": "GG, PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 1444,
-      "detalle": "2021-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 1444 personas",
-      "lugar_ori": "Medio San Juan",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Dipurdú",
-      "departamento_des": "Chocó",
-      "lat_origen": 4.904581592431791,
-      "lng_origen": -76.84665121443734,
-      "lat_destino": 4.877185708624342,
-      "lng_destino": -76.86523468033913,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "n5oyivwqnnimark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.904581592431791",
+                "ini_lng": " -76.84665121443734",
+                "end_lat": "4.877185708624342",
+                "end_lng": " -76.86523468033913"
+            },
+            "places": {
+                "ini_mun": "Medio San Juan",
+                "ini_dep": "Chocó",
+                "end_mun": "Dipurdú",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 1444 personas"
+            }
+        }
     },
-    {
-      "id": "tonh2r0zobmark",
-      "orden": 19,
-      "anio": 2021,
-      "pueblo": "Embera Katyo",
-      "actor": "PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 62,
-      "detalle": "2021-Pueblo Embera Katyo, Actor PARAMILITARES, Tipo Masivo, 62 personas",
-      "lugar_ori": "Carmen da atrato",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Carmen de atrato II",
-      "departamento_des": "Chocó",
-      "lat_origen": 5.89967019704406,
-      "lng_origen": -76.14127372569435,
-      "lat_destino": 5.888907929841706,
-      "lng_destino": -76.14004888012737,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "tonh2r0zobmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.89967019704406",
+                "ini_lng": " -76.14127372569435",
+                "end_lat": "5.888907929841706",
+                "end_lng": " -76.14004888012737"
+            },
+            "places": {
+                "ini_mun": "Carmen da atrato",
+                "ini_dep": "Chocó",
+                "end_mun": "Carmen de atrato II",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Embera Katyo, Actor PARAMILITARES, Tipo Masivo, 62 personas"
+            }
+        }
     },
-    {
-      "id": "k8gmqp7avkhmark",
-      "orden": 20,
-      "anio": 2018,
-      "pueblo": "Embera Chamí",
-      "actor": "PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 656,
-      "detalle": "2018-Pueblo Embera Chamí, Actor PARAMILITARES, Tipo Masivo, 656 personas",
-      "lugar_ori": "Pizarro",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Virudó",
-      "departamento_des": "Chocó",
-      "lat_origen": 4.95462720339,
-      "lng_origen": -77.3654122009,
-      "lat_destino": 5.403587021333042,
-      "lng_destino": -77.40042278797682,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "k8gmqp7avkhmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.95462720339",
+                "ini_lng": "-77.3654122009",
+                "end_lat": "5.403587021333042",
+                "end_lng": " -77.40042278797682"
+            },
+            "places": {
+                "ini_mun": "Pizarro",
+                "ini_dep": "Chocó",
+                "end_mun": "Virudó",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo Embera Chamí, Actor PARAMILITARES, Tipo Masivo, 656 personas"
+            }
+        }
     },
-    {
-      "id": "ghkta05r5womark",
-      "orden": 21,
-      "anio": 2023,
-      "pueblo": "Embera Katyo",
-      "actor": "ELN|D-FARC",
-      "tipo": "Multifamiliar",
-      "personas": 336,
-      "detalle": "2023-Pueblo Embera Katyo, Actor ELN|D-FARC, Tipo Multifamiliar, 336 personas",
-      "lugar_ori": "Sipí",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Sipí",
-      "departamento_des": "Chocó",
-      "lat_origen": 4.65120437592,
-      "lng_origen": -76.6444041851,
-      "lat_destino": 4.65120437592,
-      "lng_destino": -76.6444041851,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "ghkta05r5womark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "4.65120437592",
+                "ini_lng": "-76.6444041851",
+                "end_lat": "4.65120437592",
+                "end_lng": "-76.6444041851"
+            },
+            "places": {
+                "ini_mun": "Sipí",
+                "ini_dep": "Chocó",
+                "end_mun": "Sipí",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2023-Pueblo Embera Katyo, Actor ELN|D-FARC, Tipo Multifamiliar, 336 personas"
+            }
+        }
     },
-    {
-      "id": "aqhfae6yt5omark",
-      "orden": 22,
-      "anio": 2021,
-      "pueblo": "Wounaan",
-      "actor": "GG, PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 387,
-      "detalle": "2021-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 387 personas",
-      "lugar_ori": "Istmina",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Olave",
-      "departamento_des": "Chocó",
-      "lat_origen": 5.199513063203617,
-      "lng_origen": -76.90130650287956,
-      "lat_destino": 4.572281855464539,
-      "lng_destino": -76.99253290803958,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "aqhfae6yt5omark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.199513063203617",
+                "ini_lng": " -76.90130650287956",
+                "end_lat": "4.572281855464539",
+                "end_lng": " -76.99253290803958"
+            },
+            "places": {
+                "ini_mun": "Istmina",
+                "ini_dep": "Chocó",
+                "end_mun": "Olave",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2021-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 387 personas"
+            }
+        }
     },
-    {
-      "id": "uwb1g47zllmark",
-      "orden": 23,
-      "anio": 2017,
-      "pueblo": "Wounaan",
-      "actor": "GG, PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 500,
-      "detalle": "2017-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 500 personas",
-      "lugar_ori": "Truandó",
-      "departamento_ori": "Chocó",
-      "lugar_des": "Riosucio",
-      "departamento_des": "Chocó",
-      "lat_origen": 7.330099484154223,
-      "lng_origen": -77.14734862804409,
-      "lat_destino": 7.43663369807,
-      "lng_destino": -77.1131097247,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "uwb1g47zllmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "7.330099484154223",
+                "ini_lng": " -77.14734862804409",
+                "end_lat": "7.43663369807",
+                "end_lng": "-77.1131097247"
+            },
+            "places": {
+                "ini_mun": "Truandó",
+                "ini_dep": "Chocó",
+                "end_mun": "Riosucio",
+                "end_dep": "Chocó"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2017-Pueblo Wounaan, Actor GG, PARAMILITARES, Tipo Masivo, 500 personas"
+            }
+        }
     },
-    {
-      "id": "k7wjpa59widmark",
-      "orden": 24,
-      "anio": 2023,
-      "pueblo": "Embera Katyo",
-      "actor": "GG, PARAMILITARES",
-      "tipo": "Multifamiliar",
-      "personas": 174,
-      "detalle": "2023-Pueblo Embera Katyo, Actor GG, PARAMILITARES, Tipo Multifamiliar, 174 personas",
-      "lugar_ori": "Tierralta",
-      "departamento_ori": "Córdoba",
-      "lugar_des": "Vda. El manso",
-      "departamento_des": "Córdoba",
-      "lat_origen": 8.17037997285,
-      "lng_origen": -76.0596965689,
-      "lat_destino": 7.350356514568567,
-      "lng_destino": -76.69220469514812,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "k7wjpa59widmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "8.17037997285",
+                "ini_lng": "-76.0596965689",
+                "end_lat": "7.350356514568567",
+                "end_lng": " -76.69220469514812"
+            },
+            "places": {
+                "ini_mun": "Tierralta",
+                "ini_dep": "Córdoba",
+                "end_mun": "Vda. El manso",
+                "end_dep": "Córdoba"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2023-Pueblo Embera Katyo, Actor GG, PARAMILITARES, Tipo Multifamiliar, 174 personas"
+            }
+        }
     },
-    {
-      "id": "tch3ao70yf9mark",
-      "orden": 25,
-      "anio": 2019,
-      "pueblo": "Nasa",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 33,
-      "detalle": "2019-Pueblo Nasa, Actor NO IDENTIFICADO, Tipo Masivo, 33 personas",
-      "lugar_ori": "Yopal",
-      "departamento_ori": "Casanare",
-      "lugar_des": "San José Del Guaviare",
-      "departamento_des": "Guaviare",
-      "lat_origen": 5.32761201728,
-      "lng_origen": -72.3969155417,
-      "lat_destino": 2.56608342423,
-      "lng_destino": -72.6390287201,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "tch3ao70yf9mark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "5.32761201728",
+                "ini_lng": "-72.3969155417",
+                "end_lat": "2.56608342423",
+                "end_lng": "-72.6390287201"
+            },
+            "places": {
+                "ini_mun": "Yopal",
+                "ini_dep": "Casanare",
+                "end_mun": "San José Del Guaviare",
+                "end_dep": "Guaviare"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2019-Pueblo Nasa, Actor NO IDENTIFICADO, Tipo Masivo, 33 personas"
+            }
+        }
     },
-    {
-      "id": "ay92l62xbsvmark",
-      "orden": 26,
-      "anio": 2023,
-      "pueblo": "Wayuu",
-      "actor": "MULTI ACTOR",
-      "tipo": "Multifamiliar",
-      "personas": 80,
-      "detalle": "2023-Pueblo Wayuu, Actor MULTI ACTOR, Tipo Multifamiliar, 80 personas",
-      "lugar_ori": "Corregimiento Matitas",
-      "departamento_ori": "La Guajira",
-      "lugar_des": "Riohacha",
-      "departamento_des": "La Guajira",
-      "lat_origen": 11.264671432391227,
-      "lng_origen": -73.01002552291465,
-      "lat_destino": 11.5287502128,
-      "lng_destino": -72.9114873118,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "ay92l62xbsvmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "11.264671432391227",
+                "ini_lng": " -73.01002552291465",
+                "end_lat": "11.5287502128",
+                "end_lng": "-72.9114873118"
+            },
+            "places": {
+                "ini_mun": "Corregimiento Matitas",
+                "ini_dep": "La Guajira",
+                "end_mun": "Riohacha",
+                "end_dep": "La Guajira"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2023-Pueblo Wayuu, Actor MULTI ACTOR, Tipo Multifamiliar, 80 personas"
+            }
+        }
     },
-    {
-      "id": "acyh4p1lk8emark",
-      "orden": 27,
-      "anio": 2024,
-      "pueblo": "Wiwa",
-      "actor": "GAI",
-      "tipo": "Masivo",
-      "personas": 370,
-      "detalle": "2024-Pueblo Wiwa, Actor GAI, Tipo Masivo, 370 personas",
-      "lugar_ori": "Potrerillo",
-      "departamento_ori": "Magdalena",
-      "lugar_des": "Riohacha",
-      "departamento_des": "La Guajira",
-      "lat_origen": 10.81653819754789,
-      "lng_origen": -73.23401593353398,
-      "lat_destino": 11.5287502128,
-      "lng_destino": -72.9114873118,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "acyh4p1lk8emark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "10.81653819754789",
+                "ini_lng": " -73.23401593353398",
+                "end_lat": "11.5287502128",
+                "end_lng": "-72.9114873118"
+            },
+            "places": {
+                "ini_mun": "Potrerillo",
+                "ini_dep": "Magdalena",
+                "end_mun": "Riohacha",
+                "end_dep": "La Guajira"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2024-Pueblo Wiwa, Actor GAI, Tipo Masivo, 370 personas"
+            }
+        }
     },
-    {
-      "id": "zy0niidwxbfmark",
-      "orden": 28,
-      "anio": 2020,
-      "pueblo": "Awá",
-      "actor": "NO IDENTIFICADO",
-      "tipo": "Masivo",
-      "personas": 90,
-      "detalle": "2020-Pueblo Awá, Actor NO IDENTIFICADO, Tipo Masivo, 90 personas",
-      "lugar_ori": "Barbacoas",
-      "departamento_ori": "Nariño",
-      "lugar_des": "EL Pailón",
-      "departamento_des": "Nariño",
-      "lat_origen": 1.67144343524,
-      "lng_origen": -78.1375768702,
-      "lat_destino": 1.410285623440035,
-      "lng_destino": -78.23790404559863,
-      "color": "black",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "zy0niidwxbfmark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "1.67144343524",
+                "ini_lng": "-78.1375768702",
+                "end_lat": "1.410285623440035",
+                "end_lng": " -78.23790404559863"
+            },
+            "places": {
+                "ini_mun": "Barbacoas",
+                "ini_dep": "Nariño",
+                "end_mun": "EL Pailón",
+                "end_dep": "Nariño"
+            },
+            "format_line": {
+                "color": "'black'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2020-Pueblo Awá, Actor NO IDENTIFICADO, Tipo Masivo, 90 personas"
+            }
+        }
     },
-    {
-      "id": "h0mkogf1ch8mark",
-      "orden": 29,
-      "anio": 2018,
-      "pueblo": "Yukpa",
-      "actor": "PARAMILITARES",
-      "tipo": "Masivo",
-      "personas": 100,
-      "detalle": "2018-Pueblo Yukpa, Actor PARAMILITARES, Tipo Masivo, 100 personas",
-      "lugar_ori": "Machiquez",
-      "departamento_ori": "Norte de Santander",
-      "lugar_des": "Cúcuta",
-      "departamento_des": "Norte de Santander",
-      "lat_origen": 10.06004784030142,
-      "lng_origen": -72.5460306396305,
-      "lat_destino": 7.912488809600698,
-      "lng_destino": -72.46907302524073,
-      "color": "purple",
-      "weight": 3,
-      "opacity": 1.0,
-      "dashArray": ""
+    "h0mkogf1ch8mark": {
+        "layer": {
+            "pointA": "",
+            "pointB": "",
+            "pointC": ""
+        },
+        "line": {
+            "coord": {
+                "ini_lat": "10.06004784030142",
+                "ini_lng": " -72.5460306396305",
+                "end_lat": "7.912488809600698",
+                "end_lng": " -72.46907302524073"
+            },
+            "places": {
+                "ini_mun": "Machiquez",
+                "ini_dep": "Norte de Santander",
+                "end_mun": "Cúcuta",
+                "end_dep": "Norte de Santander"
+            },
+            "format_line": {
+                "color": "'purple'",
+                "weight": 3,
+                "opacity": 1,
+                "pane": "'4'",
+                "dashArray": "''"
+            },
+            "info": {
+                "detalle": "2018-Pueblo Yukpa, Actor PARAMILITARES, Tipo Masivo, 100 personas"
+            }
+        }
     }
-  ]
 }
