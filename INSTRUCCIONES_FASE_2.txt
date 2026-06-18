@@ -1,0 +1,50 @@
+FASE 2 - MÓDULO MONITOREO DDHH CON LECTOR RSS
+
+Contenido del paquete:
+
+1. Monitoreo/monitoreo.html
+   - Reemplaza el archivo actual.
+   - Agrega el botón "Buscar RSS ahora".
+   - Ese botón invoca la función Supabase Edge Function llamada monitoreo-rss.
+
+2. supabase/functions/monitoreo-rss/index.ts
+   - Código de la Edge Function.
+   - Lee fuentes registradas en monitoreo_fuentes.
+   - Aplica reglas registradas en monitoreo_reglas.
+   - Guarda noticias candidatas en monitoreo_items.
+
+PASO A PASO SIN DOCKER NI FRESHRSS
+
+1. Entra a Supabase.
+2. Abre tu proyecto.
+3. En el menú izquierdo entra a Edge Functions.
+4. Crea una función nueva llamada exactamente:
+
+   monitoreo-rss
+
+5. Copia el contenido del archivo:
+
+   supabase/functions/monitoreo-rss/index.ts
+
+6. Pégalo en el editor de Supabase.
+7. Guarda y despliega la función.
+8. En tu aplicación reemplaza:
+
+   Monitoreo/monitoreo.html
+
+   por el archivo nuevo incluido en este paquete.
+
+9. Abre la app, entra al módulo Monitoreo DDHH y agrega una fuente RSS real.
+10. Pulsa el botón:
+
+   Buscar RSS ahora
+
+11. Si hay coincidencias con las reglas, se guardarán resultados en la bandeja.
+
+NOTAS IMPORTANTES
+
+- La función exige que el usuario esté autenticado. No queda abierta al público.
+- El botón Buscar RSS ahora no reemplaza el botón Actualizar. Primero consulta fuentes; luego recarga la bandeja.
+- Solo se guardan noticias con coincidencia en las reglas de monitoreo.
+- Si una URL ya existe en monitoreo_items, no se duplica.
+- En esta fase la consulta es manual mediante botón. La automatización por horario se puede hacer en una fase posterior.

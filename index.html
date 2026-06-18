@@ -150,7 +150,7 @@
 
       <section class="row g-4 justify-content-center">
         <!-- TARJETA MONITOR -->
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-md-6 col-xl-3">
           <article class="tarjeta-modulo" style="--brillo: rgba(13, 110, 253, .16); --color-icono: #0d6efd; --fondo-icono: rgba(13, 110, 253, .12);">
             <div class="card-body p-4 p-lg-5 position-relative">
               <div class="d-flex align-items-center justify-content-between mb-4">
@@ -174,8 +174,35 @@
           </article>
         </div>
 
+
+
+        <!-- TARJETA MONITOREO DDHH -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <article class="tarjeta-modulo" style="--brillo: rgba(253, 126, 20, .18); --color-icono: #fd7e14; --fondo-icono: rgba(253, 126, 20, .13);">
+            <div class="card-body p-4 p-lg-5 position-relative">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="icono-modulo"><i class="bi bi-rss"></i></div>
+                <span class="badge text-bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill">Nuevo</span>
+              </div>
+
+              <h2 class="h3 fw-bold mb-2">Monitoreo DDHH</h2>
+              <p class="descripcion-modulo mb-4">
+                Seguimiento de fuentes, alertas, noticias e información periódica sobre derechos humanos y pueblos indígenas.
+              </p>
+
+              <button
+                type="button"
+                class="btn btn-warning btn-lg w-100 accion-modulo text-dark"
+                data-bs-toggle="modal"
+                data-bs-target="#modalIngresoMonitoreo">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar al Monitoreo
+              </button>
+            </div>
+          </article>
+        </div>
+
         <!-- TARJETA SIG -->
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-md-6 col-xl-3">
           <article class="tarjeta-modulo" style="--brillo: rgba(25, 135, 84, .16); --color-icono: #198754; --fondo-icono: rgba(25, 135, 84, .12);">
             <div class="card-body p-4 p-lg-5 position-relative">
               <div class="d-flex align-items-center justify-content-between mb-4">
@@ -196,7 +223,7 @@
         </div>
 
         <!-- TARJETA PÚBLICO -->
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-md-6 col-xl-3">
           <article class="tarjeta-modulo" style="--brillo: rgba(111, 66, 193, .16); --color-icono: #6f42c1; --fondo-icono: rgba(111, 66, 193, .12);">
             <div class="card-body p-4 p-lg-5 position-relative">
               <div class="d-flex align-items-center justify-content-between mb-4">
@@ -236,7 +263,7 @@
 
         <form id="formIngresoMonitor" autocomplete="on">
           <div class="modal-body pt-4">
-            <div id="loginAlert" class="mb-3"></div>
+            <div id="loginAlertMonitor" class="mb-3"></div>
 
             <div class="mb-3">
               <label for="usuarioMonitor" class="form-label">Usuario / correo</label>
@@ -266,35 +293,97 @@
     </div>
   </div>
 
+
+
+  <!-- MODAL INGRESO MONITOREO DDHH -->
+  <div class="modal fade" id="modalIngresoMonitoreo" tabindex="-1" aria-labelledby="modalIngresoMonitoreoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header border-0 pb-0">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icono-login" style="color:#fd7e14;background:rgba(253,126,20,.12);"><i class="bi bi-shield-lock"></i></div>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="modalIngresoMonitoreoLabel">Ingreso al Monitoreo DDHH</h5>
+              <div class="text-muted small">Ingrese usuario/correo y contraseña.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <form id="formIngresoMonitoreo" autocomplete="on">
+          <div class="modal-body pt-4">
+            <div id="loginAlertMonitoreo" class="mb-3"></div>
+
+            <div class="mb-3">
+              <label for="usuarioMonitoreo" class="form-label">Usuario / correo</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                <input id="usuarioMonitoreo" name="usuario" type="email" class="form-control" placeholder="usuario@correo.com" autocomplete="username" required>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label for="claveMonitoreo" class="form-label">Contraseña</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input id="claveMonitoreo" name="clave" type="password" class="form-control" placeholder="Contraseña" autocomplete="current-password" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button id="btnIngresoMonitoreo" type="submit" class="btn btn-warning text-dark">
+              <i class="bi bi-check2-circle me-1"></i>Ingresar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Misma configuración usada en js/main.js para que monitor.html reconozca la sesión.
+    // Misma configuración usada por los módulos privados para reconocer la sesión de Supabase.
     const SUPABASE_URL = 'https://sjvuxlcgeswapbphsqkv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_Ft_DEmGA6t0uOdu73wrvVg_-_Z8cnPg';
-    const MONITOR_PAGE = 'monitor.html';
 
-    function mostrarLoginAlert(tipo, mensaje) {
-      const host = document.getElementById('loginAlert');
+    const MODULOS_RESTRINGIDOS = [
+      {
+        nombre: 'Monitor',
+        destino: 'monitor.html',
+        formId: 'formIngresoMonitor',
+        btnId: 'btnIngresoMonitor',
+        usuarioId: 'usuarioMonitor',
+        claveId: 'claveMonitor',
+        alertId: 'loginAlertMonitor'
+      },
+      {
+        nombre: 'Monitoreo DDHH',
+        destino: 'Monitoreo/monitoreo.html',
+        formId: 'formIngresoMonitoreo',
+        btnId: 'btnIngresoMonitoreo',
+        usuarioId: 'usuarioMonitoreo',
+        claveId: 'claveMonitoreo',
+        alertId: 'loginAlertMonitoreo'
+      }
+    ];
+
+    function mostrarLoginAlert(alertId, tipo, mensaje) {
+      const host = document.getElementById(alertId);
       if (!host) return;
       host.innerHTML = `<div class="alert alert-${tipo} py-2 mb-0" role="alert">${mensaje}</div>`;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('formIngresoMonitor');
-      const btn = document.getElementById('btnIngresoMonitor');
-      const usuario = document.getElementById('usuarioMonitor');
-      const clave = document.getElementById('claveMonitor');
+    function configurarIngresoModulo(supabaseClient, modulo) {
+      const form = document.getElementById(modulo.formId);
+      const btn = document.getElementById(modulo.btnId);
+      const usuario = document.getElementById(modulo.usuarioId);
+      const clave = document.getElementById(modulo.claveId);
 
       if (!form || !btn || !usuario || !clave) return;
-
-      if (!window.supabase?.createClient) {
-        mostrarLoginAlert('danger', 'No cargó Supabase. Revisa la conexión o el CDN.');
-        return;
-      }
-
-      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -303,36 +392,45 @@
         const password = clave.value;
 
         if (!email || !password) {
-          mostrarLoginAlert('warning', 'Escribe usuario/correo y contraseña.');
+          mostrarLoginAlert(modulo.alertId, 'warning', 'Escribe usuario/correo y contraseña.');
           return;
         }
 
         btn.disabled = true;
         const htmlOriginal = btn.innerHTML;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Validando...';
-        mostrarLoginAlert('info', 'Validando acceso...');
+        mostrarLoginAlert(modulo.alertId, 'info', 'Validando acceso...');
 
         try {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-          });
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
           if (error) throw error;
 
           if (data?.session) {
-            mostrarLoginAlert('success', 'Ingreso correcto. Abriendo Monitor...');
-            window.location.assign(MONITOR_PAGE);
+            mostrarLoginAlert(modulo.alertId, 'success', `Ingreso correcto. Abriendo ${modulo.nombre}...`);
+            window.location.assign(modulo.destino);
             return;
           }
 
-          mostrarLoginAlert('warning', 'No se obtuvo una sesión válida.');
+          mostrarLoginAlert(modulo.alertId, 'warning', 'No se obtuvo una sesión válida.');
         } catch (error) {
-          mostrarLoginAlert('danger', error?.message || 'No fue posible iniciar sesión.');
+          mostrarLoginAlert(modulo.alertId, 'danger', error?.message || 'No fue posible iniciar sesión.');
           btn.disabled = false;
           btn.innerHTML = htmlOriginal;
         }
       });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!window.supabase?.createClient) {
+        MODULOS_RESTRINGIDOS.forEach((modulo) => {
+          mostrarLoginAlert(modulo.alertId, 'danger', 'No cargó Supabase. Revisa la conexión o el CDN.');
+        });
+        return;
+      }
+
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      MODULOS_RESTRINGIDOS.forEach((modulo) => configurarIngresoModulo(supabaseClient, modulo));
     });
   </script>
 </body>
