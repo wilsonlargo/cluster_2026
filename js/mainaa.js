@@ -60,8 +60,6 @@ const CASE_SELECT_COLUMNS = [
   'enlace',
   'contextual_info',
   'contextual_type',
-  'departamento',
-  'macroregion',
 ].join(', ');
 
 function qs(id) { return document.getElementById(id); }
@@ -159,7 +157,6 @@ const state = {
   deptoNameMap: new Map(),
   municipiosByValue: new Map(),
   municipiosFullByName: null,
-  municipiosFullByDeptoName: null,
   viewIdxs: [],
   territorioByCaso: new Map(),
   muniDeptoMap: null,
@@ -809,10 +806,7 @@ async function refreshTerritorioRPC(supabaseClient) {
     return;
   }
 
-  await ensureMunicipiosFullIndex(supabaseClient);
-
-  const caseDeptos = splitStoredTerritory(cur.departamento);
-  const caseMacros = splitStoredTerritory(cur.macroregion);
+  const muniIndex = await ensureMunicipiosFullIndex(supabaseClient);
   const deptos = [];
   const macros = [];
   const deptoSeen = new Set();
@@ -820,40 +814,38 @@ async function refreshTerritorioRPC(supabaseClient) {
 
   const lugares = (data || []).map(r => {
     const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
-    const muniRow = findMunicipioRowForCase(municipio, [], caseDeptos);
-    const info = getMunicipioTerritoryInfo(muniRow);
+    const muniRow = muniIndex.get(normLocal(municipio));
+    let depto = muniRow?.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
+    const muniDepTxt = pickMunicipioDepartamento(muniRow);
+    if (!depto && muniDepTxt) depto = getDeptoByAny(muniDepTxt);
 
-    const departamento = info.departamento || (caseDeptos.length === 1 ? caseDeptos[0] : '—');
-    const macroregion = info.macroregion || (caseMacros.length === 1 ? caseMacros[0] : null);
+    const departamento = depto?.departamento || pickMunicipioDepartamento(muniRow) || '—';
+    const macroregion = depto?.macroregion || null;
 
-    pushUniqueTerritory(deptos, deptoSeen, departamento);
-    pushUniqueTerritory(macros, macroSeen, macroregion);
+    if (departamento && departamento !== '—') {
+      const k = normLocal(departamento);
+      if (!deptoSeen.has(k)) {
+        deptoSeen.add(k);
+        deptos.push(departamento);
+      }
+    }
+
+    if (macroregion) {
+      const k = normLocal(macroregion);
+      if (!macroSeen.has(k)) {
+        macroSeen.add(k);
+        macros.push(macroregion);
+      }
+    }
 
     return {
       municipio,
-      departamento: departamento || '—',
+      departamento,
       macroregion,
       lat: r.lat ?? muniRow?.lat ?? null,
       lng: r.lng ?? muniRow?.lng ?? null,
     };
   }).filter(x => x.municipio);
-
-  // Si el municipio ya estaba agregado pero el campo del caso estaba vacío,
-  // se sincroniza al abrir el caso.
-  const derivedDepartamento = deptos.length ? deptos.join(', ') : (caseDeptos.length ? caseDeptos.join(', ') : null);
-  const derivedMacroregion = macros.length ? macros.join(', ') : (caseMacros.length ? caseMacros.join(', ') : null);
-  const savedDepartamento = cur.departamento || null;
-  const savedMacroregion = cur.macroregion || null;
-  if ((data || []).length && (derivedDepartamento || derivedMacroregion) &&
-      (normLocal(savedDepartamento) !== normLocal(derivedDepartamento) || normLocal(savedMacroregion) !== normLocal(derivedMacroregion))) {
-    const payload = { departamento: derivedDepartamento, macroregion: derivedMacroregion };
-    const upd = await supabaseClient.from(TBL_CASOS).update(payload).eq('id', cur.id);
-    if (!upd.error) updateCurrentCasePatch(payload);
-    else console.warn('sync territorio al abrir caso', upd.error.message || upd.error);
-  }
-
-  splitStoredTerritory(cur.departamento).forEach(d => pushUniqueTerritory(deptos, deptoSeen, d));
-  splitStoredTerritory(cur.macroregion).forEach(m => pushUniqueTerritory(macros, macroSeen, m));
 
   renderTerritorioUI(deptos, macros, lugares, supabaseClient);
 }
@@ -1044,8 +1036,7 @@ async function fetchMunicipiosRows(supabaseClient, departamento_id) {
 async function ensureMunicipiosFullIndex(supabaseClient) {
   if (state.municipiosFullByName) return state.municipiosFullByName;
 
-  const byName = new Map();
-  const byDeptoName = new Map();
+  const map = new Map();
   const { data, error } = await supabaseClient
     .from(TBL_MUNIS)
     .select('*')
@@ -1053,58 +1044,19 @@ async function ensureMunicipiosFullIndex(supabaseClient) {
 
   if (error) {
     console.error('ensureMunicipiosFullIndex', error);
-    state.municipiosFullByName = byName;
-    state.municipiosFullByDeptoName = byDeptoName;
-    return byName;
+    state.municipiosFullByName = map;
+    return map;
   }
 
   (data || []).forEach(r => {
     const nombre = pickMunicipioNombre(r);
     if (!nombre) return;
-
-    const nombreKey = normLocal(nombre);
-    const depTxt = pickMunicipioDepartamento(r);
-    let depNombre = depTxt;
-    const deptoById = r?.departamento_id ? getDeptoByAny(r.departamento_id) : null;
-    if (deptoById?.departamento) depNombre = deptoById.departamento;
-
-    const deptoKey = normLocal(depNombre);
-    if (nombreKey && !byName.has(nombreKey)) byName.set(nombreKey, r);
-    if (nombreKey && deptoKey) byDeptoName.set(`${deptoKey}|${nombreKey}`, r);
-  });
-
-  state.municipiosFullByName = byName;
-  state.municipiosFullByDeptoName = byDeptoName;
-  return byName;
-}
-
-function splitStoredTerritory(value) {
-  return String(value || '')
-    .split(',')
-    .map(x => x.trim())
-    .filter(Boolean);
-}
-
-function findMunicipioRowForCase(municipio, preferredRows = [], knownDeptos = []) {
-  const key = normLocal(municipio);
-  if (!key) return null;
-
-  const preferredByName = new Map();
-  (preferredRows || []).forEach(row => {
-    const nombre = pickMunicipioNombre(row);
     const k = normLocal(nombre);
-    if (k) preferredByName.set(k, row);
+    if (!map.has(k)) map.set(k, r);
   });
 
-  if (preferredByName.has(key)) return preferredByName.get(key);
-
-  const byDepto = state.municipiosFullByDeptoName || new Map();
-  for (const dep of (knownDeptos || [])) {
-    const row = byDepto.get(`${normLocal(dep)}|${key}`);
-    if (row) return row;
-  }
-
-  return state.municipiosFullByName?.get(key) || null;
+  state.municipiosFullByName = map;
+  return map;
 }
 
 async function loadDepartamentosCatalog(sel, supabaseClient) {
@@ -1138,116 +1090,6 @@ function updateDeptoMacroInfo(departamento_id) {
   const d = getDeptoByAny(departamento_id);
   const elInfo = qs('deptoMacroInfo');
   if (elInfo) elInfo.textContent = 'Macroregión (depto): ' + (d?.macroregion || '—');
-}
-
-function splitStoredTerritory(value) {
-  return String(value || '')
-    .split(/[;,|]/)
-    .map(x => x.trim())
-    .filter(Boolean);
-}
-
-function pushUniqueTerritory(list, seen, value) {
-  const v = String(value || '').trim();
-  if (!v || v === '—') return;
-  const k = normLocal(v);
-  if (!k || seen.has(k)) return;
-  seen.add(k);
-  list.push(v);
-}
-
-function getMunicipioTerritoryInfo(muniRow, selectedTerritory = null) {
-  if (selectedTerritory?.departamento || selectedTerritory?.macroregion) {
-    return {
-      departamento: selectedTerritory?.departamento || '',
-      macroregion: selectedTerritory?.macroregion || '',
-    };
-  }
-
-  if (!muniRow || typeof muniRow !== 'object') return { departamento: '', macroregion: '' };
-
-  if (muniRow.__selectedDepartamento || muniRow.__selectedMacroregion) {
-    return {
-      departamento: muniRow.__selectedDepartamento || '',
-      macroregion: muniRow.__selectedMacroregion || '',
-    };
-  }
-
-  let depto = muniRow.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
-  const deptoTxt = pickMunicipioDepartamento(muniRow);
-  if (!depto && deptoTxt) depto = getDeptoByAny(deptoTxt);
-
-  return {
-    departamento: depto?.departamento || deptoTxt || '',
-    macroregion: depto?.macroregion || '',
-  };
-}
-
-function selectedDepartamentoInfo() {
-  const selectedDeptoId = (qs('selectDepartamento')?.value || '').trim();
-  const selectedDepto = getDeptoByAny(selectedDeptoId);
-  return {
-    id: selectedDeptoId || null,
-    departamento: selectedDepto?.departamento || '',
-    macroregion: selectedDepto?.macroregion || '',
-  };
-}
-
-async function syncCasoDepartamentoMacroregion(supabaseClient, casoId, preferredMunicipioRows = [], forcedTerritory = null) {
-  if (!supabaseClient || !casoId) return;
-
-  const { data, error } = await supabaseClient
-    .from(TBL_CASO_MUNI)
-    .select(`${COL_MUNICIPIO_TXT}`)
-    .eq(COL_CASO_ID, casoId);
-
-  if (error) {
-    console.error('syncCasoDepartamentoMacroregion', error);
-    showAlert('warning', 'Municipio agregado, pero no se pudo actualizar departamento/macroregión');
-    return;
-  }
-
-  await ensureMunicipiosFullIndex(supabaseClient);
-
-  const currentCase = state.cases.find(c => String(c.id) === String(casoId)) || getCurrentCase() || {};
-  const knownDeptos = splitStoredTerritory(currentCase.departamento);
-  const deptos = [];
-  const macros = [];
-  const deptoSeen = new Set();
-  const macroSeen = new Set();
-
-  (data || []).forEach(r => {
-    const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
-    if (!municipio) return;
-    const muniRow = findMunicipioRowForCase(municipio, preferredMunicipioRows, knownDeptos);
-    const info = getMunicipioTerritoryInfo(muniRow);
-    pushUniqueTerritory(deptos, deptoSeen, info.departamento);
-    pushUniqueTerritory(macros, macroSeen, info.macroregion);
-  });
-
-  // Respaldo decisivo: al agregar desde el formulario, el departamento seleccionado
-  // debe quedar guardado aunque el índice municipal no logre resolverlo por nombre.
-  if (forcedTerritory?.departamento) pushUniqueTerritory(deptos, deptoSeen, forcedTerritory.departamento);
-  if (forcedTerritory?.macroregion) pushUniqueTerritory(macros, macroSeen, forcedTerritory.macroregion);
-
-  const payload = {
-    departamento: deptos.length ? deptos.join(', ') : null,
-    macroregion: macros.length ? macros.join(', ') : null,
-  };
-
-  const upd = await supabaseClient
-    .from(TBL_CASOS)
-    .update(payload)
-    .eq('id', casoId);
-
-  if (upd.error) {
-    console.error('syncCasoDepartamentoMacroregion update', upd.error);
-    showAlert('warning', 'Municipio agregado, pero no se pudo guardar departamento/macroregión en el caso');
-    return;
-  }
-
-  const idx = state.cases.findIndex(c => String(c.id) === String(casoId));
-  if (idx >= 0) Object.assign(state.cases[idx], payload);
 }
 
 async function loadMunicipiosCatalog(sel, supabaseClient, departamento_id) {
@@ -1319,8 +1161,6 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
     enlace: r.enlace ?? null,
     contextual_info: r.contextual_info ?? null,
     contextual_type: boolValue(r.contextual_type),
-    departamento: r.departamento ?? null,
-    macroregion: r.macroregion ?? null,
     npersonas: Number(r.npersonas ?? 0),
     nmujeres: Number(r.nmujeres ?? 0),
     nhombres: Number(r.nhombres ?? 0),
@@ -1402,6 +1242,10 @@ async function saveFechaEvento(supabaseClient) {
 
   const mtSel = qs('selectMacrotipo');
   const det = qs('detalle');
+  const fuente = (qs('fuente')?.value || '').trim() || null;
+  const fechafuente = qs('fechaFuente') ? (qs('fechaFuente').value || null) : null;
+  const enlace = (qs('enlaceFuente')?.value || '').trim() || null;
+  const contextual_info = (qs('contextualInfo')?.value || '').trim() || null;
 
   const payload = {
     fecha_evento: newDate,
@@ -1409,6 +1253,10 @@ async function saveFechaEvento(supabaseClient) {
     detalle: (det ? (det.value.trim() || null) : (cur.detalle || null)),
     subtipos: Array.isArray(cur.subtipos) ? cur.subtipos : [],
     contextual_type: !!qs('contextualType')?.checked,
+    contextual_info,
+    fuente,
+    fechafuente,
+    enlace,
     npersonas: readInt('npersonas'),
     nmujeres: readInt('nmujeres'),
     nhombres: readInt('nhombres'),
@@ -1422,8 +1270,41 @@ async function saveFechaEvento(supabaseClient) {
     return;
   }
   updateCurrentCasePatch(payload);
+  const btn = qs('btnOpenFuente');
+  if (btn) btn.disabled = !((enlace || '').trim());
   showAlert('success', 'Guardado');
   await loadCasesForYear(state.year, supabaseClient, { focusId: cur.id, goLast: false });
+}
+
+async function updateFechaEventoAuto(supabaseClient, expectedId = null) {
+  const cur = getCurrentCase();
+  const input = qs('fechaEvento');
+  if (!cur || !input) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
+
+  const fecha_evento = input.value || null;
+  if (!fecha_evento) {
+    showAlert('warning', 'Define fecha_evento');
+    return;
+  }
+
+  const oldVal = cur.fecha_evento ? String(cur.fecha_evento).slice(0, 10) : '';
+  if (fecha_evento === oldVal) return;
+
+  const { error } = await supabaseClient
+    .from(TBL_CASOS)
+    .update({ fecha_evento })
+    .eq('id', cur.id);
+
+  if (error) {
+    console.error('updateFechaEventoAuto', error);
+    showAlert('danger', error.message || 'No se pudo guardar fecha_evento');
+    input.value = oldVal;
+    return;
+  }
+
+  updateCurrentCasePatch({ fecha_evento });
+  showAlert('success', 'fecha_evento actualizada');
 }
 
 async function addCase(supabaseClient) {
@@ -1583,15 +1464,8 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  const selectedTerritory = selectedDepartamentoInfo();
-  const muniForSync = {
-    ...muniData,
-    __selectedDepartamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
-    __selectedMacroregion: selectedTerritory.macroregion || '',
-  };
-
-  const latNum = Number(String(muniData?.lat ?? '').replace(',', '.'));
-  const lngNum = Number(String(muniData?.lng ?? '').replace(',', '.'));
+  const latNum = Number(muniData?.lat);
+  const lngNum = Number(muniData?.lng);
 
   const payload = {
     [COL_CASO_ID]: cur.id,
@@ -1615,15 +1489,9 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id, [muniForSync], {
-    departamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
-    macroregion: selectedTerritory.macroregion || '',
-  });
-
-  showAlert('success', 'Municipio, departamento y macroregión agregados');
+  showAlert('success', 'Municipio agregado');
   selMpio.value = '';
   state.municipiosFullByName = null;
-  state.municipiosFullByDeptoName = null;
   state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
   await buildTerritorioIndexForYear(supabaseClient);
@@ -1651,12 +1519,8 @@ async function removeMunicipioFromCaso(supabaseClient, municipioTxt) {
     return;
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id);
-
   showAlert('success', 'Municipio quitado');
-  state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
-  await buildTerritorioIndexForYear(supabaseClient);
 }
 
 
@@ -1700,13 +1564,27 @@ async function updateContextualTypeAuto(supabaseClient) {
 }
 
 // ----------------- FUENTE + CONTEXTO -----------------
-async function updateFuenteAuto(supabaseClient) {
+async function updateFuenteAuto(supabaseClient, expectedId = null) {
   const cur = getCurrentCase();
   if (!cur) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
 
   const fuente = (qs('fuente')?.value || '').trim() || null;
   const fechafuente = qs('fechaFuente') ? (qs('fechaFuente').value || null) : null;
   const enlace = (qs('enlaceFuente')?.value || '').trim() || null;
+
+  const previous = {
+    fuente: cur.fuente ?? null,
+    fechafuente: cur.fechafuente ?? null,
+    enlace: cur.enlace ?? null,
+  };
+
+  const same =
+    (previous.fuente || null) === fuente &&
+    (previous.fechafuente || null) === fechafuente &&
+    (previous.enlace || null) === enlace;
+
+  if (same) return;
 
   const { error } = await supabaseClient
     .from(TBL_CASOS)
@@ -1716,6 +1594,9 @@ async function updateFuenteAuto(supabaseClient) {
   if (error) {
     console.error('updateFuenteAuto', error);
     showAlert('danger', error.message || 'No se pudo guardar fuente');
+    setValue('fuente', previous.fuente || '');
+    setValue('fechaFuente', previous.fechafuente ? String(previous.fechafuente).slice(0, 10) : '');
+    setValue('enlaceFuente', previous.enlace || '');
     return;
   }
 
@@ -1725,11 +1606,14 @@ async function updateFuenteAuto(supabaseClient) {
   if (btn) btn.disabled = !((enlace || '').trim());
 }
 
-async function updateContextualInfoAuto(supabaseClient) {
+async function updateContextualInfoAuto(supabaseClient, expectedId = null) {
   const cur = getCurrentCase();
   if (!cur) return;
+  if (expectedId && String(cur.id) !== String(expectedId)) return;
 
   const contextual_info = (qs('contextualInfo')?.value || '').trim() || null;
+  const oldVal = cur.contextual_info ?? null;
+  if ((oldVal || null) === contextual_info) return;
 
   const { error } = await supabaseClient
     .from(TBL_CASOS)
@@ -1739,6 +1623,7 @@ async function updateContextualInfoAuto(supabaseClient) {
   if (error) {
     console.error('updateContextualInfoAuto', error);
     showAlert('danger', error.message || 'No se pudo guardar contextual_info');
+    setValue('contextualInfo', oldVal || '');
     return;
   }
 
@@ -2058,21 +1943,6 @@ async function buildTerritorioIndexForYear(supabaseClient) {
       }
     });
   }
-
-  // Respaldo para filtros de auditoría: también toma el departamento guardado en casos_2026.
-  (state.cases || []).forEach(c => {
-    const deps = splitStoredTerritory(c.departamento);
-    if (!deps.length) return;
-    let entry = state.territorioByCaso.get(c.id);
-    if (!entry) {
-      entry = { municipios: [], depto_ids: new Set() };
-      state.territorioByCaso.set(c.id, entry);
-    }
-    deps.forEach(depName => {
-      const d = getDeptoByAny(depName);
-      if (d?.id) entry.depto_ids.add(String(d.id));
-    });
-  });
 }
 
 function passTextFilter(c, q) {
@@ -2426,8 +2296,6 @@ async function pj_insertFromJson(supabaseClient) {
     }
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, newId);
-
   // Cerrar modal
   const modalEl = qs('modalPasteJson');
   const inst = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
@@ -2476,6 +2344,17 @@ function bindMonitor(supabaseClient) {
   qs('btnAdd')?.addEventListener('click', () => addCase(supabaseClient));
   qs('btnDelete')?.addEventListener('click', () => deleteCase(supabaseClient));
   qs('btnSave')?.addEventListener('click', () => saveFechaEvento(supabaseClient));
+
+  qs('fechaEvento')?.addEventListener('change', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFechaEventoAuto(supabaseClient, cur.id);
+  });
+  qs('fechaEvento')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFechaEventoAuto(supabaseClient, cur.id);
+  });
   qs('btnLogoutToIndex')?.addEventListener('click', () => logoutToIndex(supabaseClient));
   qs('contextualType')?.addEventListener('change', () => updateContextualTypeAuto(supabaseClient));
 
@@ -2573,6 +2452,51 @@ function bindMonitor(supabaseClient) {
   ['npersonas', 'nmujeres', 'nhombres', 'nmenores'].forEach(id => {
     qs(id)?.addEventListener('input', savePoblacion);
   });
+
+  // Fuente autosave
+  const saveFuente = debounce(async (expectedId) => {
+    await updateFuenteAuto(supabaseClient, expectedId);
+  }, 650);
+
+  ['fuente', 'enlaceFuente'].forEach(id => {
+    qs(id)?.addEventListener('input', () => {
+      const cur = getCurrentCase();
+      if (!cur) return;
+      saveFuente(cur.id);
+    });
+    qs(id)?.addEventListener('blur', () => {
+      const cur = getCurrentCase();
+      if (!cur) return;
+      updateFuenteAuto(supabaseClient, cur.id);
+    });
+  });
+
+  qs('fechaFuente')?.addEventListener('change', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFuenteAuto(supabaseClient, cur.id);
+  });
+  qs('fechaFuente')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateFuenteAuto(supabaseClient, cur.id);
+  });
+
+  // Información contextual autosave
+  const saveContextualInfo = debounce(async (expectedId) => {
+    await updateContextualInfoAuto(supabaseClient, expectedId);
+  }, 700);
+  qs('contextualInfo')?.addEventListener('input', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    saveContextualInfo(cur.id);
+  });
+  qs('contextualInfo')?.addEventListener('blur', () => {
+    const cur = getCurrentCase();
+    if (!cur) return;
+    updateContextualInfoAuto(supabaseClient, cur.id);
+  });
+
   // FORCE btnOpenFuente binding (abre enlace en nueva pestaña)
   const _btnFuente = qs('btnOpenFuente');
   if (_btnFuente) {
