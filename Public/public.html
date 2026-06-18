@@ -247,6 +247,43 @@
       line-height: 1.45;
     }
 
+    .period-card {
+      border: 1px solid var(--obs-line);
+      border-radius: 1rem;
+      padding: .9rem;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      height: 100%;
+    }
+
+    .period-label {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: .25rem .6rem;
+      margin-bottom: .55rem;
+      font-size: .75rem;
+      font-weight: 800;
+      color: #0f3a5f;
+      background: #e0f2fe;
+      border: 1px solid rgba(14, 116, 144, .16);
+    }
+
+    .bibliography-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: #334155;
+      font-size: .86rem;
+      line-height: 1.55;
+    }
+
+    .bibliography-list li { margin-bottom: .72rem; }
+
+    .source-domain {
+      color: var(--obs-muted);
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+
     .loading-screen {
       position: fixed; inset: 0; z-index: 2500;
       background: rgba(244,247,251,.92);
@@ -286,7 +323,7 @@
             <i class="bi bi-arrow-left me-1"></i>Volver al inicio
           </a>
           <div class="d-none d-md-flex align-items-center gap-2 small text-muted">
-            <i class="bi bi-database-check"></i>
+            <i class="bi bi-journal-check"></i>
             <span id="estadoPublico">Preparando microinforme...</span>
           </div>
         </div>
@@ -343,21 +380,29 @@
         <div class="panel-card pad">
           <div class="row g-4 align-items-start">
             <div class="col-lg-7">
-              <div class="intro-pill"><i class="bi bi-journal-text"></i><span>Proyecto de investigación y documentación</span></div>
+              <div class="intro-pill"><i class="bi bi-journal-text"></i><span>Proyecto voluntario de investigación y documentación</span></div>
               <h2 class="h3 fw-bold mb-3 text-primary-emphasis">Sobre este microinforme</h2>
               <div class="intro-text">
-                <p class="mb-2">Este microinforme hace parte de un proyecto de investigación sobre derechos humanos en pueblos indígenas. Su propósito es organizar, documentar y presentar información sobre hechos registrados en distintos territorios, con una lectura agregada, territorial y descriptiva.</p>
-                <p class="mb-2">La información se construye a partir de fuentes producidas por organizaciones indígenas, organizaciones sociales, entidades públicas, medios de comunicación y documentación propia del Observatorio. En lo posible, los registros se actualizan diariamente para mantener una lectura vigente del contexto documentado.</p>
+                <p class="mb-2">Este microinforme hace parte de un proyecto voluntario de investigación sobre derechos humanos en pueblos indígenas. Su propósito es organizar, documentar y presentar información sobre hechos registrados en distintos territorios, con una lectura agregada, territorial y descriptiva.</p>
+                <p class="mb-2">La información documentada se organiza en dos momentos. El primero corresponde al periodo 2016–2024, construido a partir de la revisión y sistematización de informes públicos, documentos de organizaciones indígenas, organismos de derechos humanos y fuentes institucionales. Las referencias documentales de este primer periodo se incluyen al final de la página.</p>
+                <p class="mb-2">El segundo momento corresponde a 2025 hasta la fecha. En este periodo, los registros se consolidan mediante investigación personal y documentación periódica, a partir de fuentes de organizaciones indígenas, entidades públicas, organismos de derechos humanos, medios de comunicación y documentación propia del proceso de observación.</p>
                 <p class="mb-0">Si requiere información más específica, precisiones metodológicas o cruces adicionales de datos, puede escribir a <a class="fw-bold" href="mailto:wilson.largo.s@gmail.com">wilson.largo.s@gmail.com</a>.</p>
               </div>
             </div>
             <div class="col-lg-5">
               <div class="intro-list">
                 <div class="intro-list-item">
-                  <div class="intro-icon"><i class="bi bi-shield-check"></i></div>
+                  <div class="intro-icon"><i class="bi bi-calendar-range"></i></div>
                   <div>
-                    <div class="intro-list-title">Lectura agregada</div>
-                    <div class="intro-list-text">Los datos se presentan en forma consolidada, sin exponer información personal ni sensible de víctimas o personas registradas.</div>
+                    <div class="intro-list-title">2016–2024 · sistematización documental</div>
+                    <div class="intro-list-text">Registros organizados a partir de informes públicos, documentos institucionales y reportes de organizaciones indígenas y de derechos humanos.</div>
+                  </div>
+                </div>
+                <div class="intro-list-item">
+                  <div class="intro-icon"><i class="bi bi-pencil-square"></i></div>
+                  <div>
+                    <div class="intro-list-title">2025–actualidad · investigación periódica</div>
+                    <div class="intro-list-text">Información documentada de forma periódica mediante seguimiento a fuentes organizativas, institucionales, periodísticas y documentación propia.</div>
                   </div>
                 </div>
                 <div class="intro-list-item">
@@ -368,17 +413,10 @@
                   </div>
                 </div>
                 <div class="intro-list-item">
-                  <div class="intro-icon"><i class="bi bi-database-check"></i></div>
+                  <div class="intro-icon"><i class="bi bi-shield-check"></i></div>
                   <div>
-                    <div class="intro-list-title">Fuentes diversas</div>
-                    <div class="intro-list-text">Los registros integran información de organizaciones, fuentes institucionales, medios y documentación propia del proceso de observación.</div>
-                  </div>
-                </div>
-                <div class="intro-list-item">
-                  <div class="intro-icon"><i class="bi bi-envelope"></i></div>
-                  <div>
-                    <div class="intro-list-title">Solicitud de información</div>
-                    <div class="intro-list-text">Para consultas específicas, cruces de información o ampliación de contexto, se dispone el correo de contacto del Observatorio.</div>
+                    <div class="intro-list-title">Lectura agregada</div>
+                    <div class="intro-list-text">Los datos se presentan en forma consolidada, sin exponer información personal ni sensible de víctimas o personas registradas.</div>
                   </div>
                 </div>
               </div>
@@ -387,6 +425,7 @@
         </div>
       </div>
     </section>
+
 
     <main>
       <section class="section">
@@ -508,9 +547,35 @@
             <h2 class="h4 fw-bold mb-3 text-primary-emphasis"><i class="bi bi-info-circle me-2"></i>Nota metodológica</h2>
             <div class="method-note">
               <p class="mb-2">Este microinforme presenta información agregada de los registros consolidados por el Observatorio. Los conteos corresponden a la información disponible al momento de la consulta y deben leerse como una aproximación descriptiva del contexto documentado.</p>
+              <p class="mb-2">La lectura histórica integra dos momentos documentales: una sistematización retrospectiva de fuentes públicas para el periodo 2016–2024 y una documentación periódica desarrollada desde 2025 hasta la fecha.</p>
               <p class="mb-2">El índice de lectura territorial IDR combina exposición territorial, impacto poblacional e intensidad promedio por caso. Su uso es descriptivo y orientativo; no reemplaza análisis cualitativos, verificaciones comunitarias ni lecturas de contexto.</p>
               <p class="mb-0">Los mapas de calor usan departamentos y municipios como unidades de agregación. La vista de puntos muestra únicamente información general por caso y municipio, sin exponer datos personales.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="section pt-0" id="referencias-documentales">
+        <div class="container">
+          <div class="panel-card pad">
+            <h2 class="h4 fw-bold mb-3 text-primary-emphasis"><i class="bi bi-book me-2"></i>Referencias documentales</h2>
+            <p class="method-note mb-3">Las siguientes referencias corresponden a informes públicos y documentos consultados para la sistematización histórica, especialmente del periodo 2016–2024. Se presentan como base documental del microinforme y como orientación para ampliar la lectura de contexto.</p>
+            <ol class="bibliography-list">
+              <li>Comisión Interamericana de Derechos Humanos. (2025). <em>Los impactos de la violencia en la situación de los derechos humanos en Colombia</em>. Organización de los Estados Americanos. <span class="source-domain">oas.org</span></li>
+              <li>Comisión Nacional de Territorios Indígenas. (2026). <em>Los derechos territoriales de los pueblos indígenas en Colombia: Informe anual</em>. <span class="source-domain">cntindigena.org</span></li>
+              <li>Consejo Regional Indígena del Cauca. (2025). <em>Con la fuerza de la resistencia: Informe anual de derechos humanos CRIC</em>. Tejido de Defensa de la Vida y los Derechos Humanos. <span class="source-domain">cric-colombia.org</span></li>
+              <li>Human Forest. (s.f.). <em>Derechos territoriales de los pueblos indígenas</em>. <span class="source-domain">humanforest.com.co</span></li>
+              <li>Human Rights Watch. (2025). <em>Colombia: Armed groups strangle southern communities</em>. <span class="source-domain">hrw.org</span></li>
+              <li>IWGIA. (2026). <em>El mundo indígena 2026: Colombia</em>. Grupo Internacional de Trabajo sobre Asuntos Indígenas. <span class="source-domain">iwgia.org</span></li>
+              <li>Mesa Permanente de Concertación. (2025). <em>Informe de seguimiento a los compromisos del Plan Nacional de Desarrollo: Capítulo indígena</em>. <span class="source-domain">unp.gov.co</span></li>
+              <li>Oficina del Alto Comisionado de las Naciones Unidas para los Derechos Humanos. (2026). <em>Informe anual del Alto Comisionado de la ONU para los Derechos Humanos sobre la situación de derechos humanos en Colombia</em>. Naciones Unidas. <span class="source-domain">hchr.org.co</span></li>
+              <li>Oficina del Alto Comisionado de las Naciones Unidas para los Refugiados. (s.f.). <em>Indigenous people and forced displacement in Colombia</em>. ACNUR. <span class="source-domain">acnur.org</span></li>
+              <li>Organización Nacional de los Pueblos Indígenas de la Amazonía Colombiana. (2024). <em>Informe sobre violaciones a los derechos humanos y afectaciones ambientales en la Amazonía colombiana</em>. Observatorio de Derechos Humanos OPIAC.</li>
+              <li>Organización Nacional Indígena de Colombia. (2022). <em>Informe final de afectaciones a los derechos humanos y el derecho internacional humanitario en los pueblos indígenas de Colombia</em>. Consejería de Derechos de los Pueblos Indígenas, Derechos Humanos y Paz. <span class="source-domain">onic.org.co</span></li>
+              <li>Organización Nacional Indígena de Colombia. (2023). <em>Informe sobre la situación de derechos humanos y derecho internacional humanitario en los pueblos indígenas de Colombia</em>. Observatorio de Derechos Humanos; Consejería de Derechos de los Pueblos Indígenas, Derechos Humanos y Paz. <span class="source-domain">onic.org.co</span></li>
+              <li>Organización Nacional Indígena de Colombia. (2024). <em>Memorias de vida y armonías: IV informe periódico de la Consejería de Derechos de los Pueblos Indígenas, Derechos Humanos y Paz</em>. Observatorio de Derechos Humanos. <span class="source-domain">onic.org.co</span></li>
+            </ol>
           </div>
         </div>
       </section>
@@ -532,6 +597,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./public.js?v=20260617-public-v4-microinforme"></script>
+  <script src="./public.js?v=20260617-public-v5-fuentes"></script>
 </body>
 </html>
