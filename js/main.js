@@ -60,8 +60,6 @@ const CASE_SELECT_COLUMNS = [
   'enlace',
   'contextual_info',
   'contextual_type',
-  'departamento',
-  'macroregion',
 ].join(', ');
 
 function qs(id) { return document.getElementById(id); }
@@ -159,7 +157,6 @@ const state = {
   deptoNameMap: new Map(),
   municipiosByValue: new Map(),
   municipiosFullByName: null,
-  municipiosFullByDeptoName: null,
   viewIdxs: [],
   territorioByCaso: new Map(),
   muniDeptoMap: null,
@@ -809,10 +806,7 @@ async function refreshTerritorioRPC(supabaseClient) {
     return;
   }
 
-  await ensureMunicipiosFullIndex(supabaseClient);
-
-  const caseDeptos = splitStoredTerritory(cur.departamento);
-  const caseMacros = splitStoredTerritory(cur.macroregion);
+  const muniIndex = await ensureMunicipiosFullIndex(supabaseClient);
   const deptos = [];
   const macros = [];
   const deptoSeen = new Set();
@@ -820,40 +814,38 @@ async function refreshTerritorioRPC(supabaseClient) {
 
   const lugares = (data || []).map(r => {
     const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
-    const muniRow = findMunicipioRowForCase(municipio, [], caseDeptos);
-    const info = getMunicipioTerritoryInfo(muniRow);
+    const muniRow = muniIndex.get(normLocal(municipio));
+    let depto = muniRow?.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
+    const muniDepTxt = pickMunicipioDepartamento(muniRow);
+    if (!depto && muniDepTxt) depto = getDeptoByAny(muniDepTxt);
 
-    const departamento = info.departamento || (caseDeptos.length === 1 ? caseDeptos[0] : '—');
-    const macroregion = info.macroregion || (caseMacros.length === 1 ? caseMacros[0] : null);
+    const departamento = depto?.departamento || pickMunicipioDepartamento(muniRow) || '—';
+    const macroregion = depto?.macroregion || null;
 
-    pushUniqueTerritory(deptos, deptoSeen, departamento);
-    pushUniqueTerritory(macros, macroSeen, macroregion);
+    if (departamento && departamento !== '—') {
+      const k = normLocal(departamento);
+      if (!deptoSeen.has(k)) {
+        deptoSeen.add(k);
+        deptos.push(departamento);
+      }
+    }
+
+    if (macroregion) {
+      const k = normLocal(macroregion);
+      if (!macroSeen.has(k)) {
+        macroSeen.add(k);
+        macros.push(macroregion);
+      }
+    }
 
     return {
       municipio,
-      departamento: departamento || '—',
+      departamento,
       macroregion,
       lat: r.lat ?? muniRow?.lat ?? null,
       lng: r.lng ?? muniRow?.lng ?? null,
     };
   }).filter(x => x.municipio);
-
-  // Si el municipio ya estaba agregado pero el campo del caso estaba vacío,
-  // se sincroniza al abrir el caso.
-  const derivedDepartamento = deptos.length ? deptos.join(', ') : (caseDeptos.length ? caseDeptos.join(', ') : null);
-  const derivedMacroregion = macros.length ? macros.join(', ') : (caseMacros.length ? caseMacros.join(', ') : null);
-  const savedDepartamento = cur.departamento || null;
-  const savedMacroregion = cur.macroregion || null;
-  if ((data || []).length && (derivedDepartamento || derivedMacroregion) &&
-      (normLocal(savedDepartamento) !== normLocal(derivedDepartamento) || normLocal(savedMacroregion) !== normLocal(derivedMacroregion))) {
-    const payload = { departamento: derivedDepartamento, macroregion: derivedMacroregion };
-    const upd = await supabaseClient.from(TBL_CASOS).update(payload).eq('id', cur.id);
-    if (!upd.error) updateCurrentCasePatch(payload);
-    else console.warn('sync territorio al abrir caso', upd.error.message || upd.error);
-  }
-
-  splitStoredTerritory(cur.departamento).forEach(d => pushUniqueTerritory(deptos, deptoSeen, d));
-  splitStoredTerritory(cur.macroregion).forEach(m => pushUniqueTerritory(macros, macroSeen, m));
 
   renderTerritorioUI(deptos, macros, lugares, supabaseClient);
 }
@@ -1044,8 +1036,7 @@ async function fetchMunicipiosRows(supabaseClient, departamento_id) {
 async function ensureMunicipiosFullIndex(supabaseClient) {
   if (state.municipiosFullByName) return state.municipiosFullByName;
 
-  const byName = new Map();
-  const byDeptoName = new Map();
+  const map = new Map();
   const { data, error } = await supabaseClient
     .from(TBL_MUNIS)
     .select('*')
@@ -1053,58 +1044,19 @@ async function ensureMunicipiosFullIndex(supabaseClient) {
 
   if (error) {
     console.error('ensureMunicipiosFullIndex', error);
-    state.municipiosFullByName = byName;
-    state.municipiosFullByDeptoName = byDeptoName;
-    return byName;
+    state.municipiosFullByName = map;
+    return map;
   }
 
   (data || []).forEach(r => {
     const nombre = pickMunicipioNombre(r);
     if (!nombre) return;
-
-    const nombreKey = normLocal(nombre);
-    const depTxt = pickMunicipioDepartamento(r);
-    let depNombre = depTxt;
-    const deptoById = r?.departamento_id ? getDeptoByAny(r.departamento_id) : null;
-    if (deptoById?.departamento) depNombre = deptoById.departamento;
-
-    const deptoKey = normLocal(depNombre);
-    if (nombreKey && !byName.has(nombreKey)) byName.set(nombreKey, r);
-    if (nombreKey && deptoKey) byDeptoName.set(`${deptoKey}|${nombreKey}`, r);
-  });
-
-  state.municipiosFullByName = byName;
-  state.municipiosFullByDeptoName = byDeptoName;
-  return byName;
-}
-
-function splitStoredTerritory(value) {
-  return String(value || '')
-    .split(',')
-    .map(x => x.trim())
-    .filter(Boolean);
-}
-
-function findMunicipioRowForCase(municipio, preferredRows = [], knownDeptos = []) {
-  const key = normLocal(municipio);
-  if (!key) return null;
-
-  const preferredByName = new Map();
-  (preferredRows || []).forEach(row => {
-    const nombre = pickMunicipioNombre(row);
     const k = normLocal(nombre);
-    if (k) preferredByName.set(k, row);
+    if (!map.has(k)) map.set(k, r);
   });
 
-  if (preferredByName.has(key)) return preferredByName.get(key);
-
-  const byDepto = state.municipiosFullByDeptoName || new Map();
-  for (const dep of (knownDeptos || [])) {
-    const row = byDepto.get(`${normLocal(dep)}|${key}`);
-    if (row) return row;
-  }
-
-  return state.municipiosFullByName?.get(key) || null;
+  state.municipiosFullByName = map;
+  return map;
 }
 
 async function loadDepartamentosCatalog(sel, supabaseClient) {
@@ -1138,116 +1090,6 @@ function updateDeptoMacroInfo(departamento_id) {
   const d = getDeptoByAny(departamento_id);
   const elInfo = qs('deptoMacroInfo');
   if (elInfo) elInfo.textContent = 'Macroregión (depto): ' + (d?.macroregion || '—');
-}
-
-function splitStoredTerritory(value) {
-  return String(value || '')
-    .split(/[;,|]/)
-    .map(x => x.trim())
-    .filter(Boolean);
-}
-
-function pushUniqueTerritory(list, seen, value) {
-  const v = String(value || '').trim();
-  if (!v || v === '—') return;
-  const k = normLocal(v);
-  if (!k || seen.has(k)) return;
-  seen.add(k);
-  list.push(v);
-}
-
-function getMunicipioTerritoryInfo(muniRow, selectedTerritory = null) {
-  if (selectedTerritory?.departamento || selectedTerritory?.macroregion) {
-    return {
-      departamento: selectedTerritory?.departamento || '',
-      macroregion: selectedTerritory?.macroregion || '',
-    };
-  }
-
-  if (!muniRow || typeof muniRow !== 'object') return { departamento: '', macroregion: '' };
-
-  if (muniRow.__selectedDepartamento || muniRow.__selectedMacroregion) {
-    return {
-      departamento: muniRow.__selectedDepartamento || '',
-      macroregion: muniRow.__selectedMacroregion || '',
-    };
-  }
-
-  let depto = muniRow.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
-  const deptoTxt = pickMunicipioDepartamento(muniRow);
-  if (!depto && deptoTxt) depto = getDeptoByAny(deptoTxt);
-
-  return {
-    departamento: depto?.departamento || deptoTxt || '',
-    macroregion: depto?.macroregion || '',
-  };
-}
-
-function selectedDepartamentoInfo() {
-  const selectedDeptoId = (qs('selectDepartamento')?.value || '').trim();
-  const selectedDepto = getDeptoByAny(selectedDeptoId);
-  return {
-    id: selectedDeptoId || null,
-    departamento: selectedDepto?.departamento || '',
-    macroregion: selectedDepto?.macroregion || '',
-  };
-}
-
-async function syncCasoDepartamentoMacroregion(supabaseClient, casoId, preferredMunicipioRows = [], forcedTerritory = null) {
-  if (!supabaseClient || !casoId) return;
-
-  const { data, error } = await supabaseClient
-    .from(TBL_CASO_MUNI)
-    .select(`${COL_MUNICIPIO_TXT}`)
-    .eq(COL_CASO_ID, casoId);
-
-  if (error) {
-    console.error('syncCasoDepartamentoMacroregion', error);
-    showAlert('warning', 'Municipio agregado, pero no se pudo actualizar departamento/macroregión');
-    return;
-  }
-
-  await ensureMunicipiosFullIndex(supabaseClient);
-
-  const currentCase = state.cases.find(c => String(c.id) === String(casoId)) || getCurrentCase() || {};
-  const knownDeptos = splitStoredTerritory(currentCase.departamento);
-  const deptos = [];
-  const macros = [];
-  const deptoSeen = new Set();
-  const macroSeen = new Set();
-
-  (data || []).forEach(r => {
-    const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
-    if (!municipio) return;
-    const muniRow = findMunicipioRowForCase(municipio, preferredMunicipioRows, knownDeptos);
-    const info = getMunicipioTerritoryInfo(muniRow);
-    pushUniqueTerritory(deptos, deptoSeen, info.departamento);
-    pushUniqueTerritory(macros, macroSeen, info.macroregion);
-  });
-
-  // Respaldo decisivo: al agregar desde el formulario, el departamento seleccionado
-  // debe quedar guardado aunque el índice municipal no logre resolverlo por nombre.
-  if (forcedTerritory?.departamento) pushUniqueTerritory(deptos, deptoSeen, forcedTerritory.departamento);
-  if (forcedTerritory?.macroregion) pushUniqueTerritory(macros, macroSeen, forcedTerritory.macroregion);
-
-  const payload = {
-    departamento: deptos.length ? deptos.join(', ') : null,
-    macroregion: macros.length ? macros.join(', ') : null,
-  };
-
-  const upd = await supabaseClient
-    .from(TBL_CASOS)
-    .update(payload)
-    .eq('id', casoId);
-
-  if (upd.error) {
-    console.error('syncCasoDepartamentoMacroregion update', upd.error);
-    showAlert('warning', 'Municipio agregado, pero no se pudo guardar departamento/macroregión en el caso');
-    return;
-  }
-
-  const idx = state.cases.findIndex(c => String(c.id) === String(casoId));
-  if (idx >= 0) Object.assign(state.cases[idx], payload);
 }
 
 async function loadMunicipiosCatalog(sel, supabaseClient, departamento_id) {
@@ -1319,8 +1161,6 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
     enlace: r.enlace ?? null,
     contextual_info: r.contextual_info ?? null,
     contextual_type: boolValue(r.contextual_type),
-    departamento: r.departamento ?? null,
-    macroregion: r.macroregion ?? null,
     npersonas: Number(r.npersonas ?? 0),
     nmujeres: Number(r.nmujeres ?? 0),
     nhombres: Number(r.nhombres ?? 0),
@@ -1583,15 +1423,8 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  const selectedTerritory = selectedDepartamentoInfo();
-  const muniForSync = {
-    ...muniData,
-    __selectedDepartamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
-    __selectedMacroregion: selectedTerritory.macroregion || '',
-  };
-
-  const latNum = Number(String(muniData?.lat ?? '').replace(',', '.'));
-  const lngNum = Number(String(muniData?.lng ?? '').replace(',', '.'));
+  const latNum = Number(muniData?.lat);
+  const lngNum = Number(muniData?.lng);
 
   const payload = {
     [COL_CASO_ID]: cur.id,
@@ -1615,15 +1448,9 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id, [muniForSync], {
-    departamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
-    macroregion: selectedTerritory.macroregion || '',
-  });
-
-  showAlert('success', 'Municipio, departamento y macroregión agregados');
+  showAlert('success', 'Municipio agregado');
   selMpio.value = '';
   state.municipiosFullByName = null;
-  state.municipiosFullByDeptoName = null;
   state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
   await buildTerritorioIndexForYear(supabaseClient);
@@ -1651,12 +1478,8 @@ async function removeMunicipioFromCaso(supabaseClient, municipioTxt) {
     return;
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id);
-
   showAlert('success', 'Municipio quitado');
-  state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
-  await buildTerritorioIndexForYear(supabaseClient);
 }
 
 
@@ -2058,21 +1881,6 @@ async function buildTerritorioIndexForYear(supabaseClient) {
       }
     });
   }
-
-  // Respaldo para filtros de auditoría: también toma el departamento guardado en casos_2026.
-  (state.cases || []).forEach(c => {
-    const deps = splitStoredTerritory(c.departamento);
-    if (!deps.length) return;
-    let entry = state.territorioByCaso.get(c.id);
-    if (!entry) {
-      entry = { municipios: [], depto_ids: new Set() };
-      state.territorioByCaso.set(c.id, entry);
-    }
-    deps.forEach(depName => {
-      const d = getDeptoByAny(depName);
-      if (d?.id) entry.depto_ids.add(String(d.id));
-    });
-  });
 }
 
 function passTextFilter(c, q) {
@@ -2301,9 +2109,12 @@ function pj_onChange() {
     return;
   }
 
+  const personas = pj_personasFromJson(parsed.value);
+  const lugares = Array.isArray(parsed.value?.lugares) ? parsed.value.lugares.filter(l => String(l?.municipio || '').trim()).length : 0;
+
   btn.disabled = false;
   pj_showErrors([]);
-  pj_hint(`Listo · fecha_evento = ${v.fecha}`);
+  pj_hint(`Listo · fecha_evento = ${v.fecha} · personas = ${personas.length} · lugares = ${lugares}`);
 }
 
 function pj_normUnique(arr) {
@@ -2324,6 +2135,188 @@ function pj_int0(v) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.trunc(n);
+}
+
+function pj_trimOrNull(value) {
+  const v = String(value ?? '').trim();
+  return v ? v : null;
+}
+
+function pj_pickFirst(row, keys) {
+  if (!row || typeof row !== 'object') return null;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(row, key) && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+      return row[key];
+    }
+  }
+  const normalizedEntries = Object.entries(row).map(([k, v]) => [normLocal(k), v]);
+  for (const key of keys) {
+    const nk = normLocal(key);
+    const found = normalizedEntries.find(([k, v]) => k === nk && v !== undefined && v !== null && String(v).trim() !== '');
+    if (found) return found[1];
+  }
+  return null;
+}
+
+function pj_ageOrNull(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const n = Number(raw.replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0 || n > 130) return null;
+  return Math.trunc(n);
+}
+
+function pj_cleanPersonaRow(row) {
+  if (typeof row === 'string') {
+    const nombres = pj_trimOrNull(row);
+    return nombres ? { nombres, documento: null, edad: null, genero: null, cargo: null } : null;
+  }
+
+  if (!row || typeof row !== 'object') return null;
+
+  const persona = {
+    nombres: pj_trimOrNull(pj_pickFirst(row, ['nombres', 'nombre', 'nombre_completo', 'nombreCompleto', 'victima', 'víctima', 'persona', 'name'])),
+    documento: pj_trimOrNull(pj_pickFirst(row, ['documento', 'identificacion', 'identificación', 'cedula', 'cédula', 'cc', 'numero_documento', 'numeroDocumento'])),
+    edad: pj_ageOrNull(pj_pickFirst(row, ['edad', 'age'])),
+    genero: pj_trimOrNull(pj_pickFirst(row, ['genero', 'género', 'sexo', 'gender'])),
+    cargo: pj_trimOrNull(pj_pickFirst(row, ['cargo', 'rol', 'funcion', 'función', 'calidad', 'perfil', 'liderazgo'])),
+  };
+
+  const hasAny = Object.values(persona).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+  return hasAny ? persona : null;
+}
+
+function pj_personasFromJson(obj) {
+  const raw = [];
+
+  const pushValue = (value) => {
+    if (!value) return;
+    if (Array.isArray(value)) raw.push(...value);
+    else if (typeof value === 'object' || typeof value === 'string') raw.push(value);
+  };
+
+  pushValue(obj?.personas);
+  pushValue(obj?.persona);
+  pushValue(obj?.personas_2026);
+  pushValue(obj?.victimas);
+  pushValue(obj?.víctimas);
+  pushValue(obj?.afectados);
+
+  // Respaldo: si el JSON viene con una sola persona en campos superiores.
+  if (!raw.length) {
+    const single = pj_cleanPersonaRow(obj);
+    if (single && (single.nombres || single.documento || single.edad || single.genero || single.cargo)) raw.push(obj);
+  }
+
+  const clean = [];
+  const seen = new Set();
+  for (const item of raw) {
+    const persona = pj_cleanPersonaRow(item);
+    if (!persona) continue;
+    const key = [persona.nombres, persona.documento, persona.edad, persona.genero, persona.cargo].map(v => normLocal(v)).join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    clean.push(persona);
+  }
+  return clean;
+}
+
+async function pj_insertPersonasForCase(supabaseClient, casoId, obj) {
+  const personas = pj_personasFromJson(obj);
+  if (!personas.length) return { count: 0, error: null };
+
+  const payload = personas.map(p => ({
+    caso_id: casoId,
+    nombres: p.nombres,
+    documento: p.documento,
+    edad: p.edad,
+    genero: p.genero,
+    cargo: p.cargo,
+  }));
+
+  const { error } = await supabaseClient
+    .from(TBL_PERSONAS)
+    .insert(payload);
+
+  if (error) {
+    console.error('pj_insertFromJson personas_2026', error);
+    return { count: 0, error };
+  }
+
+  return { count: payload.length, error: null };
+}
+
+function pj_pushUniqueLocal(list, seen, value) {
+  const v = String(value ?? '').trim();
+  if (!v || v === '—') return;
+  const k = normLocal(v);
+  if (!k || seen.has(k)) return;
+  seen.add(k);
+  list.push(v);
+}
+
+function pj_numberOrNull(value) {
+  const raw = String(value ?? '').replace(',', '.').trim();
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function pj_syncTerritorioFromJson(supabaseClient, casoId, obj) {
+  const lugares = Array.isArray(obj?.lugares) ? obj.lugares : [];
+  if (!lugares.length) return { updated: false, error: null };
+
+  await ensureMunicipiosFullIndex(supabaseClient);
+  const muniIndex = state.municipiosFullByName || new Map();
+
+  const deptos = [];
+  const macros = [];
+  const deptoSeen = new Set();
+  const macroSeen = new Set();
+
+  for (const l of lugares) {
+    if (!l || typeof l !== 'object') continue;
+    const municipio = String(pj_pickFirst(l, ['municipio', 'mun', 'mpio', 'lugar', 'nombre']) || '').trim();
+    const depDirect = String(pj_pickFirst(l, ['departamento', 'departamentos', 'dep', 'depto', 'dpto']) || '').trim();
+    const macroDirect = String(pj_pickFirst(l, ['macroregion', 'macroregión', 'macro_region']) || '').trim();
+
+    let depto = depDirect ? getDeptoByAny(depDirect) : null;
+    let depName = depDirect;
+    let macroName = macroDirect;
+
+    if (!depto && municipio) {
+      const muniRow = muniIndex.get(normLocal(municipio));
+      const depTxt = pickMunicipioDepartamento(muniRow);
+      if (muniRow?.departamento_id) depto = getDeptoByAny(muniRow.departamento_id);
+      if (!depto && depTxt) depto = getDeptoByAny(depTxt);
+      if (!depName) depName = depto?.departamento || depTxt || '';
+    }
+
+    if (depto?.departamento) depName = depto.departamento;
+    if (!macroName && depto?.macroregion) macroName = depto.macroregion;
+
+    pj_pushUniqueLocal(deptos, deptoSeen, depName);
+    pj_pushUniqueLocal(macros, macroSeen, macroName);
+  }
+
+  if (!deptos.length && !macros.length) return { updated: false, error: null };
+
+  const payload = {
+    departamento: deptos.length ? deptos.join(', ') : null,
+    macroregion: macros.length ? macros.join(', ') : null,
+  };
+
+  const { error } = await supabaseClient
+    .from(TBL_CASOS)
+    .update(payload)
+    .eq('id', casoId);
+
+  if (error) {
+    console.error('pj_syncTerritorioFromJson', error);
+    return { updated: false, error };
+  }
+
+  return { updated: true, error: null };
 }
 
 async function pj_openModal() {
@@ -2401,7 +2394,9 @@ async function pj_insertFromJson(supabaseClient) {
     return;
   }
 
-  // Vincular lugares[] -> caso_municipio_2026 (tu puente usa municipio TEXT + lat/lng)
+  const warnings = [];
+
+  // Vincular lugares[] -> caso_municipio_2026 (tu puente usa municipio TEXT + lat/lng).
   const lugares = Array.isArray(obj.lugares) ? obj.lugares : [];
   for (const l of lugares) {
     const muniTxt = String(l?.municipio || '').trim();
@@ -2410,8 +2405,8 @@ async function pj_insertFromJson(supabaseClient) {
     const payloadM = {
       [COL_CASO_ID]: newId,
       [COL_MUNICIPIO_TXT]: muniTxt,
-      lat: (l?.lat ?? null),
-      lng: (l?.lng ?? null),
+      lat: pj_numberOrNull(l?.lat),
+      lng: pj_numberOrNull(l?.lng),
     };
 
     const ins = await supabaseClient
@@ -2420,20 +2415,34 @@ async function pj_insertFromJson(supabaseClient) {
 
     if (ins.error && String(ins.error.code) !== '23505') {
       console.error('pj_insertFromJson caso_municipio_2026', ins.error);
-      // no aborta, solo avisa
-      showAlert('warning', 'Caso creado, pero hubo un problema vinculando algunos municipios.');
+      warnings.push('hubo un problema vinculando algunos municipios');
       break;
     }
   }
 
-  await syncCasoDepartamentoMacroregion(supabaseClient, newId);
+  const territorioResult = await pj_syncTerritorioFromJson(supabaseClient, newId, obj);
+  if (territorioResult.error) {
+    warnings.push('no se pudo sincronizar departamento/macroregión');
+  }
+
+  // Vincular personas[] -> personas_2026. Esta tabla queda relacionada por caso_id.
+  const personasResult = await pj_insertPersonasForCase(supabaseClient, newId, obj);
+  if (personasResult.error) {
+    warnings.push('el caso se creó, pero no se pudieron guardar las personas');
+  }
 
   // Cerrar modal
   const modalEl = qs('modalPasteJson');
   const inst = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
   if (inst) inst.hide();
 
-  showAlert('success', 'Caso creado desde portapapeles');
+  if (warnings.length) {
+    showAlert('warning', `Caso creado desde portapapeles, pero ${warnings.join(' y ')}.`);
+  } else {
+    const personasTxt = personasResult.count ? ` · ${personasResult.count} persona(s) vinculada(s)` : '';
+    showAlert('success', `Caso creado desde portapapeles${personasTxt}`);
+  }
+
   await loadCasesForYear(state.year, supabaseClient, { focusId: newId, goLast: true });
 }
 
