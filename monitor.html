@@ -137,6 +137,60 @@
       opacity: .12;
     }
 
+
+
+    /* BÚSQUEDA AVANZADA: panel inferior sin reemplazar la barra de navegación */
+    .search-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+      max-height: min(72vh, 680px);
+      background: #fff;
+      border-top: 1px solid rgba(0, 0, 0, .12);
+      z-index: 1030;
+      display: none;
+      overflow: hidden;
+    }
+
+    .search-panel.is-open {
+      display: block;
+    }
+
+    .search-panel-body {
+      max-height: calc(min(72vh, 680px) - 54px);
+      overflow: auto;
+    }
+
+    .search-results-table {
+      min-width: 1180px;
+    }
+
+    .search-results-table tbody tr {
+      cursor: pointer;
+    }
+
+    .search-results-table tbody tr:hover {
+      background: rgba(13, 110, 253, .08);
+    }
+
+    .search-results-table .text-clip {
+      max-width: 360px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 767.98px) {
+      .search-panel {
+        max-height: 78vh;
+      }
+
+      .search-panel-body {
+        max-height: calc(78vh - 54px);
+      }
+    }
+
     @media (max-width: 575.98px) {
       .case-header,
       .case-actions {
@@ -211,6 +265,9 @@
             </div>
             <button id="btnOpenAudit" type="button" class="btn btn-outline-secondary btn-sm" title="Filtros" aria-label="Filtros">
               <i class="bi bi-funnel"></i>
+            </button>
+            <button id="btnOpenSearchPanel" type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" title="Búsqueda avanzada" aria-label="Búsqueda avanzada">
+              <i class="bi bi-search"></i><span class="d-none d-lg-inline">Buscar</span>
             </button>
           </div>
         </div>
@@ -494,7 +551,9 @@
         </div>
 
         <div class="d-flex align-items-center ms-3">
-          <button id="btnPaste" class="btn btn-outline-secondary btn-sm" type="button" title="Pegar"
+          <button id="btnOpenSearchPanelBottom" class="btn btn-outline-primary btn-sm" type="button" title="Búsqueda avanzada"
+            aria-label="Búsqueda avanzada"><i class="bi bi-search"></i></button>
+          <button id="btnPaste" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Pegar"
             aria-label="Pegar"><i class="bi bi-clipboard-plus"></i></button>
           <button id="btnBackup" class="btn btn-outline-secondary btn-sm ms-2" type="button" title="Backup"
             aria-label="Backup"><i class="bi bi-cloud-arrow-up"></i></button>
@@ -502,6 +561,157 @@
       </div>
     </div>
   </nav>
+
+
+
+  <!-- PANEL INFERIOR: BÚSQUEDA AVANZADA / REPARACIÓN -->
+  <section id="advancedSearchPanel" class="search-panel shadow-lg" aria-hidden="true">
+    <div class="border-bottom bg-white px-3 py-2 d-flex align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-search text-primary"></i>
+        <div>
+          <div class="fw-semibold">Búsqueda avanzada</div>
+          <div class="small text-muted">Busca, filtra y abre registros para editar o corregir.</div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button id="btnSearchToggleCriteria" class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#searchCriteriaBox" aria-expanded="true" aria-controls="searchCriteriaBox">
+          <i class="bi bi-sliders"></i> Criterios
+        </button>
+        <button id="btnCloseSearchPanel" class="btn btn-outline-secondary btn-sm" type="button" title="Cerrar búsqueda" aria-label="Cerrar búsqueda">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="search-panel-body p-3">
+      <div id="searchCriteriaBox" class="collapse show">
+        <div class="card border-0 bg-light mb-3">
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Ámbito</label>
+                <select id="searchScope" class="form-select form-select-sm">
+                  <option value="current">Año cargado</option>
+                  <option value="year">Otro año</option>
+                  <option value="all">Todos los años</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <label class="form-label small mb-1">Año</label>
+                <select id="searchYear" class="form-select form-select-sm" disabled>
+                  <option value="">—</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-7 col-xl-3">
+                <label class="form-label small mb-1">Texto general</label>
+                <input id="searchText" class="form-control form-control-sm" type="search" placeholder="detalle, lugar, fuente, contexto, enlace...">
+              </div>
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Desde</label>
+                <input id="searchDateFrom" class="form-control form-control-sm" type="date">
+              </div>
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Hasta</label>
+                <input id="searchDateTo" class="form-control form-control-sm" type="date">
+              </div>
+              <div class="col-12 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Macrotipo</label>
+                <select id="searchMacrotipo" class="form-select form-select-sm">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+
+              <div class="col-12 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Macroactor</label>
+                <select id="searchMacroactor" class="form-select form-select-sm">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4 col-xl-2">
+                <label class="form-label small mb-1">Departamento</label>
+                <select id="searchDepartamento" class="form-select form-select-sm">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4 col-xl-2">
+                <label class="form-label small mb-1">Municipio</label>
+                <input id="searchMunicipio" class="form-control form-control-sm" type="search" placeholder="municipio">
+              </div>
+              <div class="col-12 col-md-4 col-xl-2">
+                <label class="form-label small mb-1">Pueblo</label>
+                <input id="searchPueblo" class="form-control form-control-sm" type="search" placeholder="pueblo">
+              </div>
+              <div class="col-12 col-md-4 col-xl-2">
+                <label class="form-label small mb-1">Persona / documento</label>
+                <input id="searchPersona" class="form-control form-control-sm" type="search" placeholder="nombre, documento, cargo">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <label class="form-label small mb-1"># mín.</label>
+                <input id="searchMinPersonas" class="form-control form-control-sm" type="number" min="0" step="1" placeholder="0">
+              </div>
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small mb-1">Contextual</label>
+                <select id="searchContextual" class="form-select form-select-sm">
+                  <option value="">Cualquiera</option>
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-5 col-xl-3">
+                <label class="form-label small mb-1">Verificación rápida</label>
+                <select id="searchIssue" class="form-select form-select-sm">
+                  <option value="">Ninguna</option>
+                  <option value="sinMunicipio">Sin municipio</option>
+                  <option value="sinDepartamento">Sin departamento</option>
+                  <option value="sinPueblo">Sin pueblo</option>
+                  <option value="sinFuente">Sin fuente</option>
+                  <option value="sinPersonas">Sin # personas</option>
+                  <option value="sinPersonasVinculadas">Sin personas vinculadas</option>
+                  <option value="sinMacroactor">Sin macroactor</option>
+                </select>
+              </div>
+              <div class="col-12 col-xl-3 d-flex flex-wrap gap-2">
+                <button id="btnRunAdvancedSearch" class="btn btn-primary btn-sm" type="button">
+                  <i class="bi bi-search"></i> Buscar
+                </button>
+                <button id="btnClearAdvancedSearch" class="btn btn-outline-secondary btn-sm" type="button">
+                  <i class="bi bi-eraser"></i> Limpiar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div id="advancedSearchStatus" class="small text-muted">Sin búsqueda ejecutada.</div>
+        <div class="small text-muted">Haz clic en una fila para abrir el registro.</div>
+      </div>
+
+      <div class="table-responsive border rounded bg-white">
+        <table class="table table-sm table-hover align-middle mb-0 search-results-table">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th>Año</th>
+              <th>Fecha</th>
+              <th>Macrotipo</th>
+              <th>Departamento</th>
+              <th>Municipio</th>
+              <th>Pueblo</th>
+              <th class="text-end">#</th>
+              <th>Fuente</th>
+              <th>Detalle</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="advancedSearchResultsBody">
+            <tr><td colspan="10" class="text-muted text-center py-3">Abre criterios y ejecuta una búsqueda.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <div class="modal fade" id="modalSubtipos" tabindex="-1" aria-labelledby="modalSubtiposLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable">
@@ -618,7 +828,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./js/main.js?v=20260621-json-personas-v2-fix"></script>
+  <script src="./js/main.js?v=20260621-busqueda-panel-v2-preserva-barra"></script>
 
   <!-- MODAL PERSONA -->
   <div class="modal fade" id="modalPersona" tabindex="-1">

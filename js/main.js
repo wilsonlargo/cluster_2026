@@ -60,6 +60,8 @@ const CASE_SELECT_COLUMNS = [
   'enlace',
   'contextual_info',
   'contextual_type',
+  'departamento',
+  'macroregion',
 ].join(', ');
 
 function qs(id) { return document.getElementById(id); }
@@ -157,6 +159,8 @@ const state = {
   deptoNameMap: new Map(),
   municipiosByValue: new Map(),
   municipiosFullByName: null,
+  municipiosFullByDeptoName: null,
+  searchResults: [],
   viewIdxs: [],
   territorioByCaso: new Map(),
   muniDeptoMap: null,
@@ -806,7 +810,10 @@ async function refreshTerritorioRPC(supabaseClient) {
     return;
   }
 
-  const muniIndex = await ensureMunicipiosFullIndex(supabaseClient);
+  await ensureMunicipiosFullIndex(supabaseClient);
+
+  const caseDeptos = splitStoredTerritory(cur.departamento);
+  const caseMacros = splitStoredTerritory(cur.macroregion);
   const deptos = [];
   const macros = [];
   const deptoSeen = new Set();
@@ -814,38 +821,38 @@ async function refreshTerritorioRPC(supabaseClient) {
 
   const lugares = (data || []).map(r => {
     const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
-    const muniRow = muniIndex.get(normLocal(municipio));
-    let depto = muniRow?.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
-    const muniDepTxt = pickMunicipioDepartamento(muniRow);
-    if (!depto && muniDepTxt) depto = getDeptoByAny(muniDepTxt);
+    const muniRow = findMunicipioRowForCase(municipio, [], caseDeptos);
+    const info = getMunicipioTerritoryInfo(muniRow);
 
-    const departamento = depto?.departamento || pickMunicipioDepartamento(muniRow) || '—';
-    const macroregion = depto?.macroregion || null;
+    const departamento = info.departamento || (caseDeptos.length === 1 ? caseDeptos[0] : '—');
+    const macroregion = info.macroregion || (caseMacros.length === 1 ? caseMacros[0] : null);
 
-    if (departamento && departamento !== '—') {
-      const k = normLocal(departamento);
-      if (!deptoSeen.has(k)) {
-        deptoSeen.add(k);
-        deptos.push(departamento);
-      }
-    }
-
-    if (macroregion) {
-      const k = normLocal(macroregion);
-      if (!macroSeen.has(k)) {
-        macroSeen.add(k);
-        macros.push(macroregion);
-      }
-    }
+    pushUniqueTerritory(deptos, deptoSeen, departamento);
+    pushUniqueTerritory(macros, macroSeen, macroregion);
 
     return {
       municipio,
-      departamento,
+      departamento: departamento || '—',
       macroregion,
       lat: r.lat ?? muniRow?.lat ?? null,
       lng: r.lng ?? muniRow?.lng ?? null,
     };
   }).filter(x => x.municipio);
+
+  const derivedDepartamento = deptos.length ? deptos.join(', ') : (caseDeptos.length ? caseDeptos.join(', ') : null);
+  const derivedMacroregion = macros.length ? macros.join(', ') : (caseMacros.length ? caseMacros.join(', ') : null);
+  const savedDepartamento = cur.departamento || null;
+  const savedMacroregion = cur.macroregion || null;
+  if ((data || []).length && (derivedDepartamento || derivedMacroregion) &&
+      (normLocal(savedDepartamento) !== normLocal(derivedDepartamento) || normLocal(savedMacroregion) !== normLocal(derivedMacroregion))) {
+    const payload = { departamento: derivedDepartamento, macroregion: derivedMacroregion };
+    const upd = await supabaseClient.from(TBL_CASOS).update(payload).eq('id', cur.id);
+    if (!upd.error) updateCurrentCasePatch(payload);
+    else console.warn('sync territorio al abrir caso', upd.error.message || upd.error);
+  }
+
+  splitStoredTerritory(cur.departamento).forEach(d => pushUniqueTerritory(deptos, deptoSeen, d));
+  splitStoredTerritory(cur.macroregion).forEach(m => pushUniqueTerritory(macros, macroSeen, m));
 
   renderTerritorioUI(deptos, macros, lugares, supabaseClient);
 }
@@ -1036,7 +1043,8 @@ async function fetchMunicipiosRows(supabaseClient, departamento_id) {
 async function ensureMunicipiosFullIndex(supabaseClient) {
   if (state.municipiosFullByName) return state.municipiosFullByName;
 
-  const map = new Map();
+  const byName = new Map();
+  const byDeptoName = new Map();
   const { data, error } = await supabaseClient
     .from(TBL_MUNIS)
     .select('*')
@@ -1044,19 +1052,29 @@ async function ensureMunicipiosFullIndex(supabaseClient) {
 
   if (error) {
     console.error('ensureMunicipiosFullIndex', error);
-    state.municipiosFullByName = map;
-    return map;
+    state.municipiosFullByName = byName;
+    state.municipiosFullByDeptoName = byDeptoName;
+    return byName;
   }
 
   (data || []).forEach(r => {
     const nombre = pickMunicipioNombre(r);
     if (!nombre) return;
-    const k = normLocal(nombre);
-    if (!map.has(k)) map.set(k, r);
+
+    const nombreKey = normLocal(nombre);
+    const depTxt = pickMunicipioDepartamento(r);
+    let depNombre = depTxt;
+    const deptoById = r?.departamento_id ? getDeptoByAny(r.departamento_id) : null;
+    if (deptoById?.departamento) depNombre = deptoById.departamento;
+
+    const deptoKey = normLocal(depNombre);
+    if (nombreKey && !byName.has(nombreKey)) byName.set(nombreKey, r);
+    if (nombreKey && deptoKey) byDeptoName.set(`${deptoKey}|${nombreKey}`, r);
   });
 
-  state.municipiosFullByName = map;
-  return map;
+  state.municipiosFullByName = byName;
+  state.municipiosFullByDeptoName = byDeptoName;
+  return byName;
 }
 
 async function loadDepartamentosCatalog(sel, supabaseClient) {
@@ -1090,6 +1108,136 @@ function updateDeptoMacroInfo(departamento_id) {
   const d = getDeptoByAny(departamento_id);
   const elInfo = qs('deptoMacroInfo');
   if (elInfo) elInfo.textContent = 'Macroregión (depto): ' + (d?.macroregion || '—');
+}
+
+function splitStoredTerritory(value) {
+  return String(value || '')
+    .split(/[;,|]/)
+    .map(x => x.trim())
+    .filter(Boolean);
+}
+
+function pushUniqueTerritory(list, seen, value) {
+  const v = String(value || '').trim();
+  if (!v || v === '—') return;
+  const k = normLocal(v);
+  if (!k || seen.has(k)) return;
+  seen.add(k);
+  list.push(v);
+}
+
+function getMunicipioTerritoryInfo(muniRow, selectedTerritory = null) {
+  if (selectedTerritory?.departamento || selectedTerritory?.macroregion) {
+    return {
+      departamento: selectedTerritory?.departamento || '',
+      macroregion: selectedTerritory?.macroregion || '',
+    };
+  }
+
+  if (!muniRow || typeof muniRow !== 'object') return { departamento: '', macroregion: '' };
+
+  if (muniRow.__selectedDepartamento || muniRow.__selectedMacroregion) {
+    return {
+      departamento: muniRow.__selectedDepartamento || '',
+      macroregion: muniRow.__selectedMacroregion || '',
+    };
+  }
+
+  let depto = muniRow.departamento_id ? getDeptoByAny(muniRow.departamento_id) : null;
+  const deptoTxt = pickMunicipioDepartamento(muniRow);
+  if (!depto && deptoTxt) depto = getDeptoByAny(deptoTxt);
+
+  return {
+    departamento: depto?.departamento || deptoTxt || '',
+    macroregion: depto?.macroregion || '',
+  };
+}
+
+function selectedDepartamentoInfo() {
+  const selectedDeptoId = (qs('selectDepartamento')?.value || '').trim();
+  const selectedDepto = getDeptoByAny(selectedDeptoId);
+  return {
+    id: selectedDeptoId || null,
+    departamento: selectedDepto?.departamento || '',
+    macroregion: selectedDepto?.macroregion || '',
+  };
+}
+
+function findMunicipioRowForCase(municipio, preferredRows = [], knownDeptos = []) {
+  const key = normLocal(municipio);
+  if (!key) return null;
+
+  const preferredByName = new Map();
+  (preferredRows || []).forEach(row => {
+    const nombre = pickMunicipioNombre(row);
+    const k = normLocal(nombre);
+    if (k) preferredByName.set(k, row);
+  });
+
+  if (preferredByName.has(key)) return preferredByName.get(key);
+
+  const byDepto = state.municipiosFullByDeptoName || new Map();
+  for (const dep of (knownDeptos || [])) {
+    const row = byDepto.get(`${normLocal(dep)}|${key}`);
+    if (row) return row;
+  }
+
+  return state.municipiosFullByName?.get(key) || null;
+}
+
+async function syncCasoDepartamentoMacroregion(supabaseClient, casoId, preferredMunicipioRows = [], forcedTerritory = null) {
+  if (!supabaseClient || !casoId) return;
+
+  const { data, error } = await supabaseClient
+    .from(TBL_CASO_MUNI)
+    .select(`${COL_MUNICIPIO_TXT}`)
+    .eq(COL_CASO_ID, casoId);
+
+  if (error) {
+    console.error('syncCasoDepartamentoMacroregion', error);
+    showAlert('warning', 'Municipio agregado, pero no se pudo actualizar departamento/macroregión');
+    return;
+  }
+
+  await ensureMunicipiosFullIndex(supabaseClient);
+
+  const currentCase = state.cases.find(c => String(c.id) === String(casoId)) || getCurrentCase() || {};
+  const knownDeptos = splitStoredTerritory(currentCase.departamento);
+  const deptos = [];
+  const macros = [];
+  const deptoSeen = new Set();
+  const macroSeen = new Set();
+
+  (data || []).forEach(r => {
+    const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
+    if (!municipio) return;
+    const muniRow = findMunicipioRowForCase(municipio, preferredMunicipioRows, knownDeptos);
+    const info = getMunicipioTerritoryInfo(muniRow);
+    pushUniqueTerritory(deptos, deptoSeen, info.departamento);
+    pushUniqueTerritory(macros, macroSeen, info.macroregion);
+  });
+
+  if (forcedTerritory?.departamento) pushUniqueTerritory(deptos, deptoSeen, forcedTerritory.departamento);
+  if (forcedTerritory?.macroregion) pushUniqueTerritory(macros, macroSeen, forcedTerritory.macroregion);
+
+  const payload = {
+    departamento: deptos.length ? deptos.join(', ') : null,
+    macroregion: macros.length ? macros.join(', ') : null,
+  };
+
+  const upd = await supabaseClient
+    .from(TBL_CASOS)
+    .update(payload)
+    .eq('id', casoId);
+
+  if (upd.error) {
+    console.error('syncCasoDepartamentoMacroregion update', upd.error);
+    showAlert('warning', 'Municipio agregado, pero no se pudo guardar departamento/macroregión en el caso');
+    return;
+  }
+
+  const idx = state.cases.findIndex(c => String(c.id) === String(casoId));
+  if (idx >= 0) Object.assign(state.cases[idx], payload);
 }
 
 async function loadMunicipiosCatalog(sel, supabaseClient, departamento_id) {
@@ -1161,6 +1309,8 @@ async function loadCasesForYear(year, supabaseClient, opts = {}) {
     enlace: r.enlace ?? null,
     contextual_info: r.contextual_info ?? null,
     contextual_type: boolValue(r.contextual_type),
+    departamento: r.departamento ?? null,
+    macroregion: r.macroregion ?? null,
     npersonas: Number(r.npersonas ?? 0),
     nmujeres: Number(r.nmujeres ?? 0),
     nhombres: Number(r.nhombres ?? 0),
@@ -1423,8 +1573,15 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  const latNum = Number(muniData?.lat);
-  const lngNum = Number(muniData?.lng);
+  const selectedTerritory = selectedDepartamentoInfo();
+  const muniForSync = {
+    ...muniData,
+    __selectedDepartamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
+    __selectedMacroregion: selectedTerritory.macroregion || '',
+  };
+
+  const latNum = Number(String(muniData?.lat ?? '').replace(',', '.'));
+  const lngNum = Number(String(muniData?.lng ?? '').replace(',', '.'));
 
   const payload = {
     [COL_CASO_ID]: cur.id,
@@ -1448,9 +1605,15 @@ async function addMunicipioToCaso(supabaseClient) {
     return;
   }
 
-  showAlert('success', 'Municipio agregado');
+  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id, [muniForSync], {
+    departamento: selectedTerritory.departamento || pickMunicipioDepartamento(muniData) || '',
+    macroregion: selectedTerritory.macroregion || '',
+  });
+
+  showAlert('success', 'Municipio, departamento y macroregión agregados');
   selMpio.value = '';
   state.municipiosFullByName = null;
+  state.municipiosFullByDeptoName = null;
   state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
   await buildTerritorioIndexForYear(supabaseClient);
@@ -1478,8 +1641,12 @@ async function removeMunicipioFromCaso(supabaseClient, municipioTxt) {
     return;
   }
 
+  await syncCasoDepartamentoMacroregion(supabaseClient, cur.id);
+
   showAlert('success', 'Municipio quitado');
+  state.muniDeptoMap = null;
   await refreshTerritorioRPC(supabaseClient);
+  await buildTerritorioIndexForYear(supabaseClient);
 }
 
 
@@ -1881,6 +2048,21 @@ async function buildTerritorioIndexForYear(supabaseClient) {
       }
     });
   }
+
+  // Respaldo para filtros de auditoría y búsqueda: también toma el departamento guardado en casos_2026.
+  (state.cases || []).forEach(c => {
+    const deps = splitStoredTerritory(c.departamento);
+    if (!deps.length) return;
+    let entry = state.territorioByCaso.get(c.id);
+    if (!entry) {
+      entry = { municipios: [], depto_ids: new Set() };
+      state.territorioByCaso.set(c.id, entry);
+    }
+    deps.forEach(depName => {
+      const d = getDeptoByAny(depName);
+      if (d?.id) entry.depto_ids.add(String(d.id));
+    });
+  });
 }
 
 function passTextFilter(c, q) {
@@ -2016,6 +2198,448 @@ async function openAuditModal(supabaseClient) {
   bootstrap.Modal.getOrCreateInstance(qs('modalAudit')).show();
 }
 
+
+
+// ----------------- BÚSQUEDA AVANZADA / PANEL INFERIOR -----------------
+function setSearchStatus(message, type = 'muted') {
+  const elStatus = qs('advancedSearchStatus');
+  if (!elStatus) return;
+  elStatus.className = `small text-${type}`;
+  elStatus.textContent = message || '—';
+}
+
+function populateSelectFromSource(targetId, sourceId, firstLabel = 'Todos') {
+  const target = qs(targetId);
+  const source = qs(sourceId);
+  if (!target || !source) return;
+  const current = target.value;
+  target.innerHTML = `<option value="">${escapeHtml(firstLabel)}</option>`;
+  Array.from(source.options || []).forEach(opt => {
+    const v = String(opt.value || '').trim();
+    const t = String(opt.textContent || '').trim();
+    if (!v) return;
+    target.appendChild(new Option(t || v, v));
+  });
+  if (current && Array.from(target.options).some(o => o.value === current)) target.value = current;
+}
+
+function populateSearchYears() {
+  const target = qs('searchYear');
+  const source = qs('selectYear');
+  if (!target || !source) return;
+  const current = target.value || source.value;
+  target.innerHTML = '<option value="">—</option>';
+  Array.from(source.options || []).forEach(opt => {
+    const v = String(opt.value || '').trim();
+    const t = String(opt.textContent || '').trim();
+    if (!v) return;
+    target.appendChild(new Option(t || v, v));
+  });
+  if (current && Array.from(target.options).some(o => o.value === current)) target.value = current;
+}
+
+function populateSearchDepartamentos() {
+  const target = qs('searchDepartamento');
+  if (!target) return;
+  const current = target.value;
+  target.innerHTML = '<option value="">Todos</option>';
+  (state.departamentos || []).forEach(d => {
+    const id = String(d.id || '').trim();
+    const name = String(d.departamento || d.nombre || '').trim();
+    if (!id) return;
+    target.appendChild(new Option(name || id, id));
+  });
+  if (current && Array.from(target.options).some(o => o.value === current)) target.value = current;
+}
+
+function syncSearchScopeUI() {
+  const scope = qs('searchScope')?.value || 'current';
+  const yearSel = qs('searchYear');
+  if (!yearSel) return;
+  yearSel.disabled = scope !== 'year';
+  if (scope === 'current') yearSel.value = qs('selectYear')?.value || '';
+}
+
+function openAdvancedSearchPanel() {
+  populateSearchYears();
+  populateSelectFromSource('searchMacrotipo', 'selectMacrotipo', 'Todos');
+  populateSelectFromSource('searchMacroactor', 'selectMacroactor', 'Todos');
+  populateSearchDepartamentos();
+  syncSearchScopeUI();
+
+  const panel = qs('advancedSearchPanel');
+  if (!panel) return;
+  panel.classList.add('is-open');
+  panel.setAttribute('aria-hidden', 'false');
+  setSearchStatus('Define criterios y ejecuta una búsqueda.', 'muted');
+}
+
+function closeAdvancedSearchPanel() {
+  const panel = qs('advancedSearchPanel');
+  if (!panel) return;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+}
+
+function clearAdvancedSearch() {
+  ['searchText', 'searchDateFrom', 'searchDateTo', 'searchMunicipio', 'searchPueblo', 'searchPersona', 'searchMinPersonas'].forEach(id => {
+    const n = qs(id);
+    if (n) n.value = '';
+  });
+  ['searchMacrotipo', 'searchMacroactor', 'searchDepartamento', 'searchContextual', 'searchIssue'].forEach(id => {
+    const n = qs(id);
+    if (n) n.value = '';
+  });
+  if (qs('searchScope')) qs('searchScope').value = 'current';
+  syncSearchScopeUI();
+  state.searchResults = [];
+  renderAdvancedSearchResults([]);
+  setSearchStatus('Criterios limpiados.', 'muted');
+}
+
+function readAdvancedSearchCriteria() {
+  const scope = qs('searchScope')?.value || 'current';
+  const currentYear = qs('selectYear')?.value || state.year || '';
+  const selectedYear = qs('searchYear')?.value || currentYear;
+  return {
+    scope,
+    year: scope === 'current' ? currentYear : (scope === 'year' ? selectedYear : ''),
+    text: (qs('searchText')?.value || '').trim(),
+    dateFrom: qs('searchDateFrom')?.value || '',
+    dateTo: qs('searchDateTo')?.value || '',
+    macrotipo: (qs('searchMacrotipo')?.value || '').trim(),
+    macroactor: (qs('searchMacroactor')?.value || '').trim(),
+    departamentoId: (qs('searchDepartamento')?.value || '').trim(),
+    municipio: (qs('searchMunicipio')?.value || '').trim(),
+    pueblo: (qs('searchPueblo')?.value || '').trim(),
+    persona: (qs('searchPersona')?.value || '').trim(),
+    minPersonas: (qs('searchMinPersonas')?.value || '').trim(),
+    contextual: (qs('searchContextual')?.value || '').trim(),
+    issue: (qs('searchIssue')?.value || '').trim(),
+  };
+}
+
+function yearFromFecha(fecha) {
+  const s = String(fecha || '').trim();
+  return s.length >= 4 ? s.slice(0, 4) : '';
+}
+
+function normIncludes(haystack, needle) {
+  const n = normLocal(needle);
+  if (!n) return true;
+  return normLocal(haystack).includes(n);
+}
+
+function arrayText(arr) {
+  if (!Array.isArray(arr)) return '';
+  return arr.map(x => String(x || '').trim()).filter(Boolean).join(', ');
+}
+
+function territorioTextFromEntry(entry) {
+  if (!entry) return { municipios: '', departamentos: '' };
+  return {
+    municipios: (entry.municipios || []).join(', '),
+    departamentos: (entry.departamentos || []).join(', '),
+  };
+}
+
+function getCaseDepartamentos(c, terr) {
+  const out = [];
+  const seen = new Set();
+  splitStoredTerritory(c?.departamento).forEach(d => pushUniqueTerritory(out, seen, d));
+  (terr?.departamentos || []).forEach(d => pushUniqueTerritory(out, seen, d));
+  return out;
+}
+
+async function fetchTerritorioMapForCases(supabaseClient, cases) {
+  const map = new Map();
+  const ids = (cases || []).map(c => c.id).filter(Boolean);
+  if (!ids.length) return map;
+
+  await ensureMunicipiosFullIndex(supabaseClient);
+
+  const chunk = 500;
+  for (let i = 0; i < ids.length; i += chunk) {
+    const part = ids.slice(i, i + chunk);
+    const { data, error } = await supabaseClient
+      .from(TBL_CASO_MUNI)
+      .select(`${COL_CASO_ID}, ${COL_MUNICIPIO_TXT}`)
+      .in(COL_CASO_ID, part);
+    if (error) {
+      console.error('fetchTerritorioMapForCases', error);
+      continue;
+    }
+    (data || []).forEach(r => {
+      const casoId = r[COL_CASO_ID];
+      const municipio = String(r[COL_MUNICIPIO_TXT] || '').trim();
+      if (!casoId) return;
+      let entry = map.get(casoId);
+      if (!entry) {
+        entry = { municipios: [], departamentos: [] };
+        map.set(casoId, entry);
+      }
+      if (municipio && !entry.municipios.some(m => normLocal(m) === normLocal(municipio))) {
+        entry.municipios.push(municipio);
+      }
+
+      const caseObj = (cases || []).find(c => String(c.id) === String(casoId)) || {};
+      const knownDeptos = splitStoredTerritory(caseObj.departamento);
+      const muniRow = findMunicipioRowForCase(municipio, [], knownDeptos);
+      const info = getMunicipioTerritoryInfo(muniRow);
+      if (info.departamento && !entry.departamentos.some(d => normLocal(d) === normLocal(info.departamento))) {
+        entry.departamentos.push(info.departamento);
+      }
+    });
+  }
+
+  (cases || []).forEach(c => {
+    let entry = map.get(c.id);
+    if (!entry) {
+      entry = { municipios: [], departamentos: [] };
+      map.set(c.id, entry);
+    }
+    splitStoredTerritory(c.departamento).forEach(d => {
+      if (!entry.departamentos.some(x => normLocal(x) === normLocal(d))) entry.departamentos.push(d);
+    });
+  });
+
+  return map;
+}
+
+async function fetchPersonasMapForCases(supabaseClient, cases) {
+  const map = new Map();
+  const ids = (cases || []).map(c => c.id).filter(Boolean);
+  if (!ids.length) return map;
+  const chunk = 500;
+  for (let i = 0; i < ids.length; i += chunk) {
+    const part = ids.slice(i, i + chunk);
+    const { data, error } = await supabaseClient
+      .from(TBL_PERSONAS)
+      .select('caso_id, nombres, documento, edad, genero, cargo')
+      .in('caso_id', part);
+    if (error) {
+      console.error('fetchPersonasMapForCases', error);
+      continue;
+    }
+    (data || []).forEach(p => {
+      if (!p.caso_id) return;
+      if (!map.has(p.caso_id)) map.set(p.caso_id, []);
+      map.get(p.caso_id).push(p);
+    });
+  }
+  return map;
+}
+
+async function fetchCasesForAdvancedSearch(supabaseClient, criteria) {
+  if (criteria.scope === 'current') {
+    return (state.cases || []).map(c => ({ ...c }));
+  }
+
+  let q = supabaseClient
+    .from(TBL_CASOS)
+    .select(CASE_SELECT_COLUMNS)
+    .order('fecha_evento', { ascending: false })
+    .limit(5000);
+
+  if (criteria.scope === 'year' && criteria.year) {
+    q = q.gte('fecha_evento', `${criteria.year}-01-01`).lte('fecha_evento', `${criteria.year}-12-31`);
+  }
+
+  if (criteria.dateFrom) q = q.gte('fecha_evento', criteria.dateFrom);
+  if (criteria.dateTo) q = q.lte('fecha_evento', criteria.dateTo);
+  if (criteria.macrotipo) q = q.eq('macrotipo', criteria.macrotipo);
+  if (criteria.macroactor) q = q.eq('macroactor', criteria.macroactor);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  return (data || []).map(r => ({
+    ...r,
+    subtipos: normalizeArrayStrings(r.subtipos),
+    pueblo: normalizeArrayStrings(r.pueblo),
+    microactores: normalizeArrayStrings(r.microactores),
+    contextual_type: boolValue(r.contextual_type),
+    departamento: r.departamento ?? null,
+    macroregion: r.macroregion ?? null,
+    npersonas: Number(r.npersonas ?? 0),
+    nmujeres: Number(r.nmujeres ?? 0),
+    nhombres: Number(r.nhombres ?? 0),
+    nmenores: Number(r.nmenores ?? 0),
+  }));
+}
+
+function casePassesAdvancedCriteria(c, criteria, terr, personas) {
+  if (criteria.scope === 'current' || criteria.scope === 'year') {
+    if (criteria.year && yearFromFecha(c.fecha_evento) !== String(criteria.year)) return false;
+  }
+  if (criteria.dateFrom && String(c.fecha_evento || '').slice(0, 10) < criteria.dateFrom) return false;
+  if (criteria.dateTo && String(c.fecha_evento || '').slice(0, 10) > criteria.dateTo) return false;
+  if (criteria.macrotipo && normLocal(c.macrotipo) !== normLocal(criteria.macrotipo)) return false;
+  if (criteria.macroactor && normLocal(c.macroactor) !== normLocal(criteria.macroactor)) return false;
+
+  const deptos = getCaseDepartamentos(c, terr);
+  const municipios = terr?.municipios || [];
+  const pueblos = normalizeArrayStrings(c.pueblo);
+  const personasTxt = (personas || []).map(p => [p.nombres, p.documento, p.genero, p.cargo].filter(Boolean).join(' ')).join(' | ');
+
+  if (criteria.departamentoId) {
+    const depObj = getDeptoByAny(criteria.departamentoId);
+    const depName = depObj?.departamento || '';
+    if (!deptos.some(d => normLocal(d) === normLocal(depName))) return false;
+  }
+  if (criteria.municipio && !municipios.some(m => normIncludes(m, criteria.municipio))) return false;
+  if (criteria.pueblo && !pueblos.some(p => normIncludes(p, criteria.pueblo))) return false;
+  if (criteria.persona && !normIncludes(personasTxt, criteria.persona)) return false;
+
+  if (criteria.minPersonas !== '') {
+    const n = Number(criteria.minPersonas);
+    if (Number.isFinite(n) && Number(c.npersonas || 0) < n) return false;
+  }
+
+  if (criteria.contextual === 'true' && !boolValue(c.contextual_type)) return false;
+  if (criteria.contextual === 'false' && boolValue(c.contextual_type)) return false;
+
+  const issue = criteria.issue;
+  if (issue === 'sinMunicipio' && municipios.length > 0) return false;
+  if (issue === 'sinDepartamento' && deptos.length > 0) return false;
+  if (issue === 'sinPueblo' && pueblos.length > 0) return false;
+  if (issue === 'sinFuente' && String(c.fuente || '').trim()) return false;
+  if (issue === 'sinPersonas' && Number(c.npersonas || 0) > 0) return false;
+  if (issue === 'sinPersonasVinculadas' && (personas || []).length > 0) return false;
+  if (issue === 'sinMacroactor' && String(c.macroactor || '').trim()) return false;
+
+  if (criteria.text) {
+    const terrTxt = territorioTextFromEntry(terr);
+    const blob = [
+      c.fecha_evento,
+      c.macrotipo,
+      c.detalle,
+      c.detalle_lugar,
+      c.fuente,
+      c.enlace,
+      c.contextual_info,
+      c.macroactor,
+      c.departamento,
+      c.macroregion,
+      arrayText(c.subtipos),
+      arrayText(pueblos),
+      terrTxt.departamentos,
+      terrTxt.municipios,
+      personasTxt,
+    ].filter(Boolean).join(' | ');
+    if (!normIncludes(blob, criteria.text)) return false;
+  }
+
+  return true;
+}
+
+function renderAdvancedSearchResults(results) {
+  const tbody = qs('advancedSearchResultsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!results.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="text-muted text-center py-3">No hay resultados.</td></tr>';
+    return;
+  }
+
+  results.forEach((r, index) => {
+    const c = r.case;
+    const tr = document.createElement('tr');
+    tr.dataset.index = String(index);
+    tr.innerHTML = `
+      <td>${escapeHtml(yearFromFecha(c.fecha_evento) || '')}</td>
+      <td>${escapeHtml(String(c.fecha_evento || '').slice(0, 10))}</td>
+      <td>${escapeHtml(c.macrotipo || '—')}</td>
+      <td><div class="text-clip">${escapeHtml(r.departamentos || '—')}</div></td>
+      <td><div class="text-clip">${escapeHtml(r.municipios || '—')}</div></td>
+      <td><div class="text-clip">${escapeHtml(arrayText(normalizeArrayStrings(c.pueblo)) || '—')}</div></td>
+      <td class="text-end">${Number(c.npersonas || 0)}</td>
+      <td><div class="text-clip">${escapeHtml(c.fuente || '—')}</div></td>
+      <td><div class="text-clip" title="${escapeHtml(c.detalle || '')}">${escapeHtml(c.detalle || '—')}</div></td>
+      <td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm">Abrir</button></td>
+    `;
+    tr.addEventListener('click', () => openAdvancedSearchResult(index));
+    tbody.appendChild(tr);
+  });
+}
+
+async function runAdvancedSearch(supabaseClient) {
+  const criteria = readAdvancedSearchCriteria();
+  const btn = qs('btnRunAdvancedSearch');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando';
+  }
+  setSearchStatus('Buscando registros...', 'muted');
+
+  try {
+    const cases = await fetchCasesForAdvancedSearch(supabaseClient, criteria);
+    const territorioMap = await fetchTerritorioMapForCases(supabaseClient, cases);
+    const personasMap = await fetchPersonasMapForCases(supabaseClient, cases);
+
+    const results = [];
+    for (const c of cases) {
+      const terr = territorioMap.get(c.id) || { municipios: [], departamentos: [] };
+      const personas = personasMap.get(c.id) || [];
+      if (!casePassesAdvancedCriteria(c, criteria, terr, personas)) continue;
+
+      const deptos = getCaseDepartamentos(c, terr);
+      results.push({
+        case: c,
+        personas,
+        municipios: (terr.municipios || []).join(', '),
+        departamentos: deptos.join(', '),
+      });
+    }
+
+    results.sort((a, b) => String(b.case.fecha_evento || '').localeCompare(String(a.case.fecha_evento || '')));
+    state.searchResults = results;
+    renderAdvancedSearchResults(results);
+    setSearchStatus(`${results.length} resultado(s). Clic en una fila para abrir y editar.`, results.length ? 'success' : 'warning');
+  } catch (error) {
+    console.error('runAdvancedSearch', error);
+    state.searchResults = [];
+    renderAdvancedSearchResults([]);
+    showAlert('danger', error.message || 'No se pudo ejecutar la búsqueda avanzada');
+    setSearchStatus('Error ejecutando la búsqueda.', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search"></i> Buscar';
+    }
+  }
+}
+
+async function openAdvancedSearchResult(index) {
+  const result = state.searchResults?.[index];
+  if (!result?.case?.id) return;
+
+  const targetId = result.case.id;
+  const targetYear = yearFromFecha(result.case.fecha_evento);
+  const currentYear = qs('selectYear')?.value || state.year;
+
+  if (targetYear && String(targetYear) !== String(currentYear)) {
+    const sel = qs('selectYear');
+    if (sel && !Array.from(sel.options).some(o => o.value === targetYear)) {
+      sel.appendChild(new Option(targetYear, targetYear));
+    }
+    if (sel) sel.value = targetYear;
+    await loadCasesForYear(targetYear, state.supabase, { focusId: targetId, goLast: false });
+  } else {
+    const idx = (state.cases || []).findIndex(c => String(c.id) === String(targetId));
+    if (idx >= 0) {
+      viewAll();
+      await setIndex(idx, state.supabase);
+      updateAuditInfoUI();
+    } else if (targetYear) {
+      await loadCasesForYear(targetYear, state.supabase, { focusId: targetId, goLast: false });
+    }
+  }
+
+  setSearchStatus('Registro abierto para edición. El panel se conserva por si necesitas volver a los resultados.', 'success');
+  qs('caseFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // ----------------- PASTE JSON MODAL -----------------
 function pj_parseDateFlexible(input) {
@@ -2472,6 +3096,20 @@ function bindMonitor(supabaseClient) {
 
   // Auditoría (modal)
   qs('btnOpenAudit')?.addEventListener('click', () => openAuditModal(supabaseClient));
+
+  // Búsqueda avanzada (panel inferior, no reemplaza la barra baja)
+  qs('btnOpenSearchPanel')?.addEventListener('click', () => openAdvancedSearchPanel());
+  qs('btnOpenSearchPanelBottom')?.addEventListener('click', () => openAdvancedSearchPanel());
+  qs('btnCloseSearchPanel')?.addEventListener('click', () => closeAdvancedSearchPanel());
+  qs('searchScope')?.addEventListener('change', () => syncSearchScopeUI());
+  qs('btnRunAdvancedSearch')?.addEventListener('click', () => runAdvancedSearch(supabaseClient));
+  qs('btnClearAdvancedSearch')?.addEventListener('click', () => clearAdvancedSearch());
+  ['searchText', 'searchMunicipio', 'searchPueblo', 'searchPersona'].forEach(id => {
+    qs(id)?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runAdvancedSearch(supabaseClient);
+    });
+  });
+
   qs('btnApplyAudit')?.addEventListener('click', () => applyAuditFilters());
   qs('btnResetAudit')?.addEventListener('click', () => resetAuditFilters());
   qs('f_depto')?.addEventListener('change', async () => { await fillAuditMunicipios(supabaseClient, qs('f_depto')?.value || null); });
