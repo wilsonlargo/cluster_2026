@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>SIG · Observatorio</title>
-<!-- SIG · consola terminal v6 + rutas desplazamientos v5 portapapeles + validación -->
+<!-- SIG · consola terminal v6 + rutas desplazamientos v5 portapapeles + validación + departamentos y macroregiones destacadas -->
 <!-- Bootstrap 5: estructura responsiva y componentes visuales como offcanvas y collapse. -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
 <!-- Bootstrap Icons: iconos de menús, capas, filtros y controles. -->
@@ -792,6 +792,153 @@
     }
 
 
+
+
+    /* Panel de funcionalidades: departamentos destacados. */
+    .deptos-destacados-toolbar {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .deptos-destacados-status {
+      border: 1px solid rgba(15, 23, 42, .10);
+      background: #f8fafc;
+      border-radius: .9rem;
+      padding: .7rem .75rem;
+      color: var(--sig-muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .deptos-destacados-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .55rem;
+    }
+
+    .deptos-destacados-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      background: #fff;
+      padding: .65rem;
+    }
+
+    .deptos-destacados-stat .value {
+      font-weight: 850;
+      font-size: 1.05rem;
+      line-height: 1;
+      color: #4b004b;
+    }
+
+    .deptos-destacados-stat .label {
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .25rem;
+      line-height: 1.15;
+    }
+
+    .deptos-destacados-list {
+      display: flex;
+      flex-direction: column;
+      gap: .55rem;
+    }
+
+    .depto-destacado-item {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .9rem;
+      background: #fff;
+      padding: .65rem .7rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .65rem;
+    }
+
+    .depto-destacado-item:hover {
+      border-color: rgba(75, 0, 75, .35);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    }
+
+    .depto-destacado-title {
+      font-weight: 780;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .depto-destacado-meta {
+      color: var(--sig-muted);
+      font-size: .74rem;
+      line-height: 1.25;
+      margin-top: .2rem;
+    }
+
+    .depto-destacado-actions {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .depto-destacado-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: .35rem;
+      background: #facc15;
+      border: 2px solid #4b004b;
+      vertical-align: middle;
+    }
+
+    /* Panel de funcionalidades: macroregiones destacadas. */
+    .macro-destacado-item {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .9rem;
+      background: #fff;
+      padding: .65rem .7rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .65rem;
+    }
+
+    .macro-destacado-item:hover {
+      border-color: rgba(29, 78, 216, .35);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    }
+
+    .macro-destacado-title {
+      font-weight: 780;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .macro-destacado-meta {
+      color: var(--sig-muted);
+      font-size: .74rem;
+      line-height: 1.25;
+      margin-top: .2rem;
+    }
+
+    .macro-destacado-actions {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .macro-destacado-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: .35rem;
+      border: 2px solid rgba(15, 23, 42, .45);
+      vertical-align: middle;
+    }
+
     /* Panel de funcionalidades: rutas de desplazamiento. */
     .rutas-toolbar {
       display: flex;
@@ -1027,6 +1174,8 @@
             </button>
 <ul class="dropdown-menu">
 <li><button class="dropdown-item" data-bs-target="#panelRutasDesplazamientos" data-bs-toggle="offcanvas" type="button"><i class="bi bi-signpost-split me-2"></i>Rutas desplazamientos</button></li>
+<li><button class="dropdown-item" data-bs-target="#panelDepartamentosDestacados" data-bs-toggle="offcanvas" type="button"><i class="bi bi-map me-2"></i>Departamentos destacados</button></li>
+<li><button class="dropdown-item" data-bs-target="#panelMacroregionesDestacadas" data-bs-toggle="offcanvas" type="button"><i class="bi bi-bounding-box-circles me-2"></i>Macroregiones destacadas</button></li>
 </ul>
 </li>
 
@@ -1115,6 +1264,117 @@
 </div>
 </aside>
 
+
+
+<!-- Panel lateral de funcionalidades: departamentos destacados. -->
+<aside aria-labelledby="panelDepartamentosDestacadosLabel" class="offcanvas offcanvas-end sig-offcanvas-end" id="panelDepartamentosDestacados" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelDepartamentosDestacadosLabel"><i class="bi bi-map me-2"></i>Departamentos destacados</h5>
+<div class="sig-help">Lista departamentos, agrega uno o varios polígonos al mapa y quítalos sin modificar la capa original.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body">
+<div class="deptos-destacados-status mb-3" id="estadoDepartamentosDestacados">
+  Carga el listado desde la capa Departamentos. Los polígonos seleccionados se dibujan en una capa superior independiente.
+</div>
+
+<div class="deptos-destacados-summary mb-3" id="resumenDepartamentosDestacados">
+  <div class="deptos-destacados-stat"><div class="value">0</div><div class="label">Disponibles</div></div>
+  <div class="deptos-destacados-stat"><div class="value">0</div><div class="label">En mapa</div></div>
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="buscarDepartamentoDestacado">Buscar departamento</label>
+  <input class="form-control" id="buscarDepartamentoDestacado" placeholder="Ej. Cauca, Chocó, Nariño" type="search" />
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="selectDepartamentoDestacado">Agregar desde lista</label>
+  <div class="input-group">
+    <select class="form-select" id="selectDepartamentoDestacado">
+      <option value="">Cargando departamentos…</option>
+    </select>
+    <button class="btn btn-primary" id="btnAgregarDepartamentoDestacado" type="button"><i class="bi bi-plus-lg"></i></button>
+  </div>
+</div>
+
+<div class="deptos-destacados-toolbar mb-3">
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnAjustarDepartamentosDestacados" type="button"><i class="bi bi-arrows-fullscreen me-1"></i>Ajustar mapa</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnLimpiarDepartamentosDestacados" type="button"><i class="bi bi-trash me-1"></i>Limpiar</button>
+</div>
+
+<div class="mb-3">
+  <div class="fw-semibold mb-2"><i class="bi bi-check2-square me-1"></i>Departamentos en mapa</div>
+  <div class="deptos-destacados-list" id="listaDepartamentosDestacadosSeleccionados">
+    <div class="text-muted small">— Sin departamentos seleccionados —</div>
+  </div>
+</div>
+
+<hr>
+
+<div>
+  <div class="fw-semibold mb-2"><i class="bi bi-list-ul me-1"></i>Departamentos disponibles</div>
+  <div class="deptos-destacados-list" id="listaDepartamentosDestacadosDisponibles"></div>
+</div>
+</div>
+
+</aside>
+
+<!-- Panel lateral de funcionalidades: macroregiones destacadas. -->
+<aside aria-labelledby="panelMacroregionesDestacadasLabel" class="offcanvas offcanvas-end sig-offcanvas-end" id="panelMacroregionesDestacadas" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelMacroregionesDestacadasLabel"><i class="bi bi-bounding-box-circles me-2"></i>Macroregiones destacadas</h5>
+<div class="sig-help">Lista macroregiones, agrega uno o varios polígonos al mapa y quítalos sin modificar las capas originales.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body">
+<div class="deptos-destacados-status mb-3" id="estadoMacroregionesDestacadas">
+  Carga el listado de macroregiones. Los polígonos seleccionados se dibujan en una capa superior independiente.
+</div>
+
+<div class="deptos-destacados-summary mb-3" id="resumenMacroregionesDestacadas">
+  <div class="deptos-destacados-stat"><div class="value">0</div><div class="label">Disponibles</div></div>
+  <div class="deptos-destacados-stat"><div class="value">0</div><div class="label">En mapa</div></div>
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="buscarMacroregionDestacada">Buscar macroregión</label>
+  <input class="form-control" id="buscarMacroregionDestacada" placeholder="Ej. Amazonía, Occidente, Norte" type="search" />
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="selectMacroregionDestacada">Agregar desde lista</label>
+  <div class="input-group">
+    <select class="form-select" id="selectMacroregionDestacada">
+      <option value="">— Cargando macroregiones —</option>
+    </select>
+    <button class="btn btn-primary" id="btnAgregarMacroregionDestacada" type="button"><i class="bi bi-plus-lg"></i></button>
+  </div>
+</div>
+
+<div class="deptos-destacados-toolbar mb-3">
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnAjustarMacroregionesDestacadas" type="button"><i class="bi bi-arrows-fullscreen me-1"></i>Ajustar mapa</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnLimpiarMacroregionesDestacadas" type="button"><i class="bi bi-trash me-1"></i>Limpiar</button>
+</div>
+
+<div class="mb-3">
+  <div class="fw-semibold mb-2"><i class="bi bi-check2-square me-1"></i>Macroregiones en mapa</div>
+  <div class="deptos-destacados-list" id="listaMacroregionesDestacadasSeleccionadas">
+    <div class="text-muted small">— Sin macroregiones seleccionadas —</div>
+  </div>
+</div>
+
+<div>
+  <div class="fw-semibold mb-2"><i class="bi bi-list-ul me-1"></i>Macroregiones disponibles</div>
+  <div class="deptos-destacados-list" id="listaMacroregionesDestacadasDisponibles"></div>
+</div>
+</div>
+</aside>
+
 <!-- Modal para pegar y validar JSON de rutas. -->
 <div class="modal fade" id="modalPegarRutasJson" tabindex="-1" aria-labelledby="modalPegarRutasJsonLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -1186,7 +1446,7 @@
 <!-- Supabase JS: cliente público para prueba controlada de acceso a la vista sig_casos_public_2026. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Configuración externa de capas, panes, colores y estilo base de casos. -->
-<script src="./configlayers.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<script src="./configlayers.js?v=20260621-departamentos-destacados-v1"></script>
 <!-- Lógica externa base del panel de filtros y puntos de casos. -->
 <script src="./datasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
 <!-- Consola técnica autenticada del SIG. -->
@@ -1204,6 +1464,8 @@
       cargandoPorId: new Set(),
       casosConsultados: [],
       mapaCalorDepartamentos: null,
+      departamentosDestacados: null,
+      macroregionesDestacadas: null,
       ultimoClickDepartamentoMs: 0
     };
 
@@ -1875,6 +2137,632 @@
       return item;
     }
 
+
+
+    // ----------------- DEPARTAMENTOS DESTACADOS -----------------
+    // Capa independiente para resaltar uno o varios departamentos sin alterar la capa base.
+    function obtenerConfigDepartamentosDestacados() {
+      return SIG_CONFIG.capas.find(capa => capa.id === 'departamentos') || null;
+    }
+
+    function asegurarEstadoDepartamentosDestacados() {
+      if (!SIG_STATE.departamentosDestacados) {
+        SIG_STATE.departamentosDestacados = {
+          cargado: false,
+          disponibles: [],
+          featurePorKey: new Map(),
+          seleccionados: new Map(),
+          grupo: null
+        };
+      }
+      return SIG_STATE.departamentosDestacados;
+    }
+
+    function asegurarPaneDepartamentosDestacados() {
+      if (!SIG_STATE.mapa) return;
+      const pane = SIG_STATE.mapa.getPane('paneDepartamentosSeleccionados') || SIG_STATE.mapa.createPane('paneDepartamentosSeleccionados');
+      pane.style.zIndex = '900';
+      pane.style.pointerEvents = 'auto';
+    }
+
+    function obtenerKeyDepartamentoDestacado(nombre) {
+      return normTxtLocal(nombre).replace(/[^a-z0-9]/g, '');
+    }
+
+    function actualizarEstadoDepartamentosDestacados(texto) {
+      const nodo = qs('estadoDepartamentosDestacados');
+      if (nodo) nodo.textContent = texto;
+    }
+
+    function actualizarResumenDepartamentosDestacados() {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      const resumen = qs('resumenDepartamentosDestacados');
+      if (!resumen) return;
+      resumen.innerHTML = `
+        <div class="deptos-destacados-stat"><div class="value">${estado.disponibles.length}</div><div class="label">Disponibles</div></div>
+        <div class="deptos-destacados-stat"><div class="value">${estado.seleccionados.size}</div><div class="label">En mapa</div></div>`;
+    }
+
+    function obtenerEstiloDepartamentoDestacado() {
+      return {
+        pane: 'paneDepartamentosSeleccionados',
+        color: '#4b004b',
+        weight: 3,
+        opacity: 1,
+        fillColor: '#facc15',
+        fillOpacity: 0.48,
+        dashArray: '',
+        lineCap: 'round',
+        lineJoin: 'round'
+      };
+    }
+
+    function crearPopupDepartamentoDestacado(feature) {
+      const nombre = obtenerNombreDepartamentoFeature(feature) || 'Departamento';
+      return `<div style="min-width:220px; max-width:420px">
+        <div class="fw-bold mb-2"><span class="depto-destacado-dot"></span>${escapeHtml(nombre)}</div>
+        <div class="text-muted small">Departamento destacado en capa superior independiente.</div>
+      </div>`;
+    }
+
+    function crearCapaDepartamentoDestacado(feature) {
+      asegurarPaneDepartamentosDestacados();
+      const estilo = obtenerEstiloDepartamentoDestacado();
+      return L.geoJSON(feature, {
+        pane: 'paneDepartamentosSeleccionados',
+        interactive: true,
+        bubblingMouseEvents: false,
+        style: () => estilo,
+        onEachFeature: (feat, layer) => {
+          layer.bindPopup(() => crearPopupDepartamentoDestacado(feat), {
+            pane: 'panePopupsTop',
+            maxWidth: 420,
+            autoPan: true
+          });
+          layer.on('click', event => {
+            SIG_STATE.ultimoClickCapaMs = Date.now();
+            if (event?.originalEvent) {
+              L.DomEvent.stopPropagation(event.originalEvent);
+              L.DomEvent.preventDefault(event.originalEvent);
+            }
+            layer.openPopup(event?.latlng);
+          });
+          layer.on('mouseover', () => {
+            if (layer.setStyle) layer.setStyle({ weight: 4, fillOpacity: 0.62 });
+            if (layer.bringToFront) layer.bringToFront();
+          });
+          layer.on('mouseout', () => {
+            if (layer.setStyle) layer.setStyle(estilo);
+          });
+        }
+      });
+    }
+
+    async function cargarDepartamentosDestacados() {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      if (estado.cargado) return estado;
+      const capaConfig = obtenerConfigDepartamentosDestacados();
+      if (!capaConfig) {
+        actualizarEstadoDepartamentosDestacados('No se encontró la configuración de la capa Departamentos.');
+        return estado;
+      }
+
+      actualizarEstadoDepartamentosDestacados('Cargando listado de departamentos…');
+      const geojson = await cargarGeoJSON(capaConfig);
+      const features = Array.isArray(geojson?.features) ? geojson.features : [];
+      const vistos = new Set();
+      estado.disponibles = [];
+      estado.featurePorKey = new Map();
+
+      features.forEach(feature => {
+        const nombre = String(obtenerNombreDepartamentoFeature(feature) || '').trim();
+        const key = obtenerKeyDepartamentoDestacado(nombre);
+        if (!nombre || !key || vistos.has(key)) return;
+        vistos.add(key);
+        const item = { key, nombre, feature };
+        estado.disponibles.push(item);
+        estado.featurePorKey.set(key, item);
+      });
+
+      estado.disponibles.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      estado.cargado = true;
+      renderizarDepartamentosDestacadosDisponibles();
+      renderizarDepartamentosDestacadosSeleccionados();
+      actualizarResumenDepartamentosDestacados();
+      actualizarEstadoDepartamentosDestacados(`${estado.disponibles.length} departamentos disponibles. Agrega uno o varios para verlos sobre el mapa.`);
+      return estado;
+    }
+
+    function renderizarSelectDepartamentosDestacados(lista) {
+      const select = qs('selectDepartamentoDestacado');
+      if (!select) return;
+      const estado = asegurarEstadoDepartamentosDestacados();
+      const base = Array.isArray(lista) ? lista : estado.disponibles;
+      select.innerHTML = '<option value="">— Selecciona departamento —</option>' + base.map(item =>
+        `<option value="${escapeHtml(item.key)}">${escapeHtml(item.nombre)}</option>`
+      ).join('');
+    }
+
+    function renderizarDepartamentosDestacadosDisponibles() {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      const contenedor = qs('listaDepartamentosDestacadosDisponibles');
+      const busqueda = normTxtLocal(qs('buscarDepartamentoDestacado')?.value || '');
+      const filtrados = estado.disponibles.filter(item => !busqueda || normTxtLocal(item.nombre).includes(busqueda));
+
+      renderizarSelectDepartamentosDestacados(filtrados);
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (!filtrados.length) {
+        contenedor.innerHTML = '<div class="text-muted small">No hay departamentos con ese criterio.</div>';
+        return;
+      }
+
+      filtrados.forEach(item => {
+        const yaAgregado = estado.seleccionados.has(item.key);
+        const row = document.createElement('div');
+        row.className = 'depto-destacado-item';
+        row.innerHTML = `
+          <div>
+            <div class="depto-destacado-title"><span class="depto-destacado-dot"></span>${escapeHtml(item.nombre)}</div>
+            <div class="depto-destacado-meta">${yaAgregado ? 'Agregado al mapa' : 'Disponible para agregar'}</div>
+          </div>
+          <div class="depto-destacado-actions">
+            <button class="btn btn-sm ${yaAgregado ? 'btn-outline-secondary' : 'btn-outline-primary'}" type="button" data-accion="agregar" ${yaAgregado ? 'disabled' : ''}>
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>`;
+        row.querySelector('[data-accion="agregar"]')?.addEventListener('click', () => agregarDepartamentoDestacado(item.key, { ajustar: true }));
+        contenedor.appendChild(row);
+      });
+    }
+
+    function renderizarDepartamentosDestacadosSeleccionados() {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      const contenedor = qs('listaDepartamentosDestacadosSeleccionados');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (!estado.seleccionados.size) {
+        contenedor.innerHTML = '<div class="text-muted small">— Sin departamentos seleccionados —</div>';
+        actualizarResumenDepartamentosDestacados();
+        return;
+      }
+
+      Array.from(estado.seleccionados.values())
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'depto-destacado-item';
+          row.innerHTML = `
+            <div>
+              <div class="depto-destacado-title"><span class="depto-destacado-dot"></span>${escapeHtml(item.nombre)}</div>
+              <div class="depto-destacado-meta">Polígono activo en capa superior</div>
+            </div>
+            <div class="depto-destacado-actions">
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-accion="zoom"><i class="bi bi-arrows-fullscreen"></i></button>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-accion="quitar"><i class="bi bi-x-lg"></i></button>
+            </div>`;
+          row.querySelector('[data-accion="zoom"]')?.addEventListener('click', () => ajustarDepartamentoDestacado(item.key));
+          row.querySelector('[data-accion="quitar"]')?.addEventListener('click', () => quitarDepartamentoDestacado(item.key));
+          contenedor.appendChild(row);
+        });
+      actualizarResumenDepartamentosDestacados();
+    }
+
+    function agregarDepartamentoDestacado(key, opciones = {}) {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      if (!key) key = qs('selectDepartamentoDestacado')?.value || '';
+      const item = estado.featurePorKey.get(key);
+      if (!item) {
+        actualizarEstadoDepartamentosDestacados('Selecciona un departamento válido.');
+        return;
+      }
+      if (estado.seleccionados.has(key)) {
+        actualizarEstadoDepartamentosDestacados(`${item.nombre} ya está agregado.`);
+        return;
+      }
+
+      if (!estado.grupo) {
+        asegurarPaneDepartamentosDestacados();
+        estado.grupo = L.layerGroup().addTo(SIG_STATE.mapa);
+      }
+
+      const capa = crearCapaDepartamentoDestacado(item.feature).addTo(estado.grupo);
+      estado.seleccionados.set(key, { ...item, capa });
+      renderizarDepartamentosDestacadosSeleccionados();
+      renderizarDepartamentosDestacadosDisponibles();
+      actualizarEstadoDepartamentosDestacados(`${item.nombre} agregado al mapa.`);
+      if (opciones.ajustar) ajustarDepartamentoDestacado(key);
+    }
+
+    function quitarDepartamentoDestacado(key) {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      const item = estado.seleccionados.get(key);
+      if (!item) return;
+      if (estado.grupo && item.capa) estado.grupo.removeLayer(item.capa);
+      estado.seleccionados.delete(key);
+      renderizarDepartamentosDestacadosSeleccionados();
+      renderizarDepartamentosDestacadosDisponibles();
+      actualizarEstadoDepartamentosDestacados(`${item.nombre} quitado del mapa.`);
+    }
+
+    function limpiarDepartamentosDestacados() {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      if (estado.grupo) estado.grupo.clearLayers();
+      estado.seleccionados.clear();
+      renderizarDepartamentosDestacadosSeleccionados();
+      renderizarDepartamentosDestacadosDisponibles();
+      actualizarEstadoDepartamentosDestacados('Se limpiaron los departamentos destacados del mapa.');
+    }
+
+    function obtenerBoundsDepartamentosDestacados(keys = null) {
+      const estado = asegurarEstadoDepartamentosDestacados();
+      let bounds = null;
+      const items = keys ? keys.map(key => estado.seleccionados.get(key)).filter(Boolean) : Array.from(estado.seleccionados.values());
+      items.forEach(item => {
+        if (!item?.capa?.getBounds) return;
+        const b = item.capa.getBounds();
+        if (!b?.isValid?.()) return;
+        bounds = bounds ? bounds.extend(b) : b;
+      });
+      return bounds;
+    }
+
+    function ajustarDepartamentoDestacado(key) {
+      const bounds = obtenerBoundsDepartamentosDestacados([key]);
+      if (bounds && SIG_STATE.mapa) SIG_STATE.mapa.fitBounds(bounds.pad(0.08), { maxZoom: 9 });
+    }
+
+    function ajustarDepartamentosDestacados() {
+      const bounds = obtenerBoundsDepartamentosDestacados();
+      if (bounds && SIG_STATE.mapa) {
+        SIG_STATE.mapa.fitBounds(bounds.pad(0.08), { maxZoom: 8 });
+      } else {
+        actualizarEstadoDepartamentosDestacados('No hay departamentos destacados para ajustar.');
+      }
+    }
+
+    async function inicializarDepartamentosDestacados() {
+      asegurarPaneDepartamentosDestacados();
+      const estado = asegurarEstadoDepartamentosDestacados();
+      estado.grupo = estado.grupo || L.layerGroup().addTo(SIG_STATE.mapa);
+
+      qs('btnAgregarDepartamentoDestacado')?.addEventListener('click', () => agregarDepartamentoDestacado(null, { ajustar: true }));
+      qs('btnLimpiarDepartamentosDestacados')?.addEventListener('click', () => limpiarDepartamentosDestacados());
+      qs('btnAjustarDepartamentosDestacados')?.addEventListener('click', () => ajustarDepartamentosDestacados());
+      qs('buscarDepartamentoDestacado')?.addEventListener('input', () => renderizarDepartamentosDestacadosDisponibles());
+      qs('panelDepartamentosDestacados')?.addEventListener('shown.bs.offcanvas', async () => {
+        await cargarDepartamentosDestacados();
+        SIG_STATE.mapa?.invalidateSize();
+      });
+
+      await cargarDepartamentosDestacados();
+    }
+
+    // ----------------- MACROREGIONES DESTACADAS -----------------
+    function asegurarEstadoMacroregionesDestacadas() {
+      if (!SIG_STATE.macroregionesDestacadas) {
+        SIG_STATE.macroregionesDestacadas = {
+          disponibles: [],
+          geojsonPorKey: new Map(),
+          seleccionados: new Map(),
+          grupo: null,
+          cargado: false
+        };
+      }
+      return SIG_STATE.macroregionesDestacadas;
+    }
+
+    function asegurarPaneMacroregionesDestacadas() {
+      if (!SIG_STATE.mapa) return null;
+      const pane = SIG_STATE.mapa.getPane('paneMacroregionesSeleccionadas') || SIG_STATE.mapa.createPane('paneMacroregionesSeleccionadas');
+      pane.style.zIndex = '920';
+      pane.style.pointerEvents = 'auto';
+      return pane;
+    }
+
+    function obtenerKeyMacroregionDestacada(nombre) {
+      return normTxtLocal(nombre).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+
+    function actualizarEstadoMacroregionesDestacadas(texto) {
+      const nodo = qs('estadoMacroregionesDestacadas');
+      if (nodo) nodo.textContent = texto || '';
+    }
+
+    function actualizarResumenMacroregionesDestacadas() {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const resumen = qs('resumenMacroregionesDestacadas');
+      if (!resumen) return;
+      resumen.innerHTML = `
+        <div class="deptos-destacados-stat"><div class="value">${estado.disponibles.length}</div><div class="label">Disponibles</div></div>
+        <div class="deptos-destacados-stat"><div class="value">${estado.seleccionados.size}</div><div class="label">En mapa</div></div>`;
+    }
+
+    function obtenerConfigMacroregionesDestacadas() {
+      return Array.isArray(SIG_CONFIG.macroregionesDestacadas) ? SIG_CONFIG.macroregionesDestacadas : [];
+    }
+
+    function obtenerEstiloMacroregionDestacada(item) {
+      return {
+        pane: 'paneMacroregionesSeleccionadas',
+        color: item?.colorLinea || '#1d4ed8',
+        weight: 3,
+        opacity: 1,
+        fillColor: item?.colorCapa || '#60a5fa',
+        fillOpacity: 0.34,
+        dashArray: '8 5',
+        lineCap: 'round',
+        lineJoin: 'round'
+      };
+    }
+
+    function obtenerDepartamentosMacroregionGeoJSON(geojson) {
+      const features = Array.isArray(geojson?.features) ? geojson.features : [];
+      const nombres = [];
+      const vistos = new Set();
+      features.forEach(feature => {
+        const props = feature?.properties || {};
+        const nombre = obtenerPropiedadFlexible(props, ['Departamen', 'DEPARTAMEN', 'DPTO_CNMBR', 'DEPARTAMENTO', 'DEPTO', 'NOMBRE', 'nombre']);
+        const texto = String(nombre || '').trim();
+        const key = normTxtLocal(texto);
+        if (!texto || vistos.has(key)) return;
+        vistos.add(key);
+        nombres.push(texto);
+      });
+      return nombres.sort((a, b) => a.localeCompare(b, 'es'));
+    }
+
+    function crearPopupMacroregionDestacada(item, geojson) {
+      const departamentos = obtenerDepartamentosMacroregionGeoJSON(geojson);
+      const listado = departamentos.length ? departamentos.slice(0, 18).map(x => `<span class="badge text-bg-light border me-1 mb-1">${escapeHtml(x)}</span>`).join('') : '<span class="text-muted small">Sin departamentos listados.</span>';
+      const extra = departamentos.length > 18 ? `<div class="text-muted small mt-1">+ ${departamentos.length - 18} departamentos adicionales</div>` : '';
+      return `<div style="min-width:260px; max-width:430px">
+        <div class="fw-bold mb-1"><span class="macro-destacado-dot" style="background:${escapeHtml(item.colorCapa || '#60a5fa')}; border-color:${escapeHtml(item.colorLinea || '#1d4ed8')}"></span>${escapeHtml(item.nombre)}</div>
+        <div class="text-muted small mb-2">Macroregión destacada · ${departamentos.length} departamento(s)</div>
+        <div>${listado}</div>${extra}
+      </div>`;
+    }
+
+    function crearCapaMacroregionDestacada(item, geojson) {
+      asegurarPaneMacroregionesDestacadas();
+      const estilo = obtenerEstiloMacroregionDestacada(item);
+      return L.geoJSON(geojson, {
+        pane: 'paneMacroregionesSeleccionadas',
+        interactive: true,
+        bubblingMouseEvents: false,
+        style: () => estilo,
+        onEachFeature: (feature, layer) => {
+          layer.bindPopup(() => crearPopupMacroregionDestacada(item, geojson), {
+            pane: 'panePopupsTop',
+            maxWidth: 460,
+            minWidth: 300,
+            autoPan: true,
+            closeButton: true
+          });
+          layer.on('mouseover', () => {
+            if (layer.setStyle) layer.setStyle({ weight: 5, opacity: 1, fillOpacity: 0.45 });
+            if (layer.bringToFront) layer.bringToFront();
+          });
+          layer.on('mouseout', () => {
+            if (layer.setStyle) layer.setStyle(estilo);
+          });
+          layer.on('click', event => {
+            if (event?.originalEvent) {
+              L.DomEvent.stopPropagation(event.originalEvent);
+              L.DomEvent.preventDefault(event.originalEvent);
+            }
+          });
+        }
+      });
+    }
+
+    async function cargarMacroregionGeoJSON(item) {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      if (estado.geojsonPorKey.has(item.key)) return estado.geojsonPorKey.get(item.key);
+      const respuesta = await fetch(item.archivo);
+      if (!respuesta.ok) throw new Error(`No se pudo cargar ${item.archivo}`);
+      const geojson = await respuesta.json();
+      estado.geojsonPorKey.set(item.key, geojson);
+      return geojson;
+    }
+
+    async function cargarMacroregionesDestacadas() {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const configs = obtenerConfigMacroregionesDestacadas();
+      if (!configs.length) {
+        actualizarEstadoMacroregionesDestacadas('No hay macroregiones configuradas en configlayers.js.');
+        return estado;
+      }
+
+      estado.disponibles = configs.map(cfg => ({
+        ...cfg,
+        key: cfg.id || obtenerKeyMacroregionDestacada(cfg.nombre)
+      })).filter(item => item.key && item.nombre && item.archivo);
+      estado.disponibles.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      estado.cargado = true;
+      renderizarMacroregionesDestacadasDisponibles();
+      renderizarMacroregionesDestacadasSeleccionadas();
+      actualizarResumenMacroregionesDestacadas();
+      actualizarEstadoMacroregionesDestacadas(`${estado.disponibles.length} macroregiones disponibles. Agrega una o varias para verlas sobre el mapa.`);
+      return estado;
+    }
+
+    function renderizarSelectMacroregionesDestacadas(lista) {
+      const select = qs('selectMacroregionDestacada');
+      if (!select) return;
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const base = Array.isArray(lista) ? lista : estado.disponibles;
+      select.innerHTML = '<option value="">— Selecciona macroregión —</option>' + base.map(item =>
+        `<option value="${escapeHtml(item.key)}">${escapeHtml(item.nombre)}</option>`
+      ).join('');
+    }
+
+    function renderizarMacroregionesDestacadasDisponibles() {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const contenedor = qs('listaMacroregionesDestacadasDisponibles');
+      const busqueda = normTxtLocal(qs('buscarMacroregionDestacada')?.value || '');
+      const filtrados = estado.disponibles.filter(item => !busqueda || normTxtLocal(item.nombre).includes(busqueda));
+
+      renderizarSelectMacroregionesDestacadas(filtrados);
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (!filtrados.length) {
+        contenedor.innerHTML = '<div class="text-muted small">No hay macroregiones con ese criterio.</div>';
+        return;
+      }
+
+      filtrados.forEach(item => {
+        const yaAgregado = estado.seleccionados.has(item.key);
+        const row = document.createElement('div');
+        row.className = 'macro-destacado-item';
+        row.innerHTML = `
+          <div>
+            <div class="macro-destacado-title"><span class="macro-destacado-dot" style="background:${escapeHtml(item.colorCapa || '#60a5fa')}; border-color:${escapeHtml(item.colorLinea || '#1d4ed8')}"></span>${escapeHtml(item.nombre)}</div>
+            <div class="macro-destacado-meta">${yaAgregado ? 'Agregada al mapa' : 'Disponible para agregar'}</div>
+          </div>
+          <div class="macro-destacado-actions">
+            <button class="btn btn-sm ${yaAgregado ? 'btn-outline-secondary' : 'btn-outline-primary'}" type="button" data-accion="agregar" ${yaAgregado ? 'disabled' : ''}>
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>`;
+        row.querySelector('[data-accion="agregar"]')?.addEventListener('click', () => agregarMacroregionDestacada(item.key, { ajustar: true }));
+        contenedor.appendChild(row);
+      });
+    }
+
+    function renderizarMacroregionesDestacadasSeleccionadas() {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const contenedor = qs('listaMacroregionesDestacadasSeleccionadas');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (!estado.seleccionados.size) {
+        contenedor.innerHTML = '<div class="text-muted small">— Sin macroregiones seleccionadas —</div>';
+        actualizarResumenMacroregionesDestacadas();
+        return;
+      }
+
+      Array.from(estado.seleccionados.values())
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'macro-destacado-item';
+          row.innerHTML = `
+            <div>
+              <div class="macro-destacado-title"><span class="macro-destacado-dot" style="background:${escapeHtml(item.colorCapa || '#60a5fa')}; border-color:${escapeHtml(item.colorLinea || '#1d4ed8')}"></span>${escapeHtml(item.nombre)}</div>
+              <div class="macro-destacado-meta">Polígono activo en capa superior</div>
+            </div>
+            <div class="macro-destacado-actions">
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-accion="zoom"><i class="bi bi-arrows-fullscreen"></i></button>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-accion="quitar"><i class="bi bi-x-lg"></i></button>
+            </div>`;
+          row.querySelector('[data-accion="zoom"]')?.addEventListener('click', () => ajustarMacroregionDestacada(item.key));
+          row.querySelector('[data-accion="quitar"]')?.addEventListener('click', () => quitarMacroregionDestacada(item.key));
+          contenedor.appendChild(row);
+        });
+      actualizarResumenMacroregionesDestacadas();
+    }
+
+    async function agregarMacroregionDestacada(key, opciones = {}) {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      if (!key) key = qs('selectMacroregionDestacada')?.value || '';
+      const item = estado.disponibles.find(x => String(x.key) === String(key));
+      if (!item) {
+        actualizarEstadoMacroregionesDestacadas('Selecciona una macroregión válida.');
+        return;
+      }
+      if (estado.seleccionados.has(key)) {
+        actualizarEstadoMacroregionesDestacadas(`${item.nombre} ya está agregada.`);
+        return;
+      }
+
+      if (!estado.grupo) {
+        asegurarPaneMacroregionesDestacadas();
+        estado.grupo = L.layerGroup().addTo(SIG_STATE.mapa);
+      }
+
+      try {
+        actualizarEstadoMacroregionesDestacadas(`Cargando ${item.nombre}…`);
+        const geojson = await cargarMacroregionGeoJSON(item);
+        const capa = crearCapaMacroregionDestacada(item, geojson).addTo(estado.grupo);
+        estado.seleccionados.set(key, { ...item, geojson, capa });
+        renderizarMacroregionesDestacadasSeleccionadas();
+        renderizarMacroregionesDestacadasDisponibles();
+        actualizarEstadoMacroregionesDestacadas(`${item.nombre} agregada al mapa.`);
+        if (opciones.ajustar) ajustarMacroregionDestacada(key);
+      } catch (error) {
+        console.error('agregarMacroregionDestacada', error);
+        actualizarEstadoMacroregionesDestacadas(`No se pudo cargar ${item.nombre}. Revisa que exista ${item.archivo}.`);
+      }
+    }
+
+    function quitarMacroregionDestacada(key) {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      const item = estado.seleccionados.get(key);
+      if (!item) return;
+      if (estado.grupo && item.capa) estado.grupo.removeLayer(item.capa);
+      estado.seleccionados.delete(key);
+      renderizarMacroregionesDestacadasSeleccionadas();
+      renderizarMacroregionesDestacadasDisponibles();
+      actualizarEstadoMacroregionesDestacadas(`${item.nombre} quitada del mapa.`);
+    }
+
+    function limpiarMacroregionesDestacadas() {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      if (estado.grupo) estado.grupo.clearLayers();
+      estado.seleccionados.clear();
+      renderizarMacroregionesDestacadasSeleccionadas();
+      renderizarMacroregionesDestacadasDisponibles();
+      actualizarEstadoMacroregionesDestacadas('Se limpiaron las macroregiones destacadas del mapa.');
+    }
+
+    function obtenerBoundsMacroregionesDestacadas(keys = null) {
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      let bounds = null;
+      const items = keys ? keys.map(key => estado.seleccionados.get(key)).filter(Boolean) : Array.from(estado.seleccionados.values());
+      items.forEach(item => {
+        if (!item?.capa?.getBounds) return;
+        const b = item.capa.getBounds();
+        if (!b?.isValid?.()) return;
+        bounds = bounds ? bounds.extend(b) : b;
+      });
+      return bounds;
+    }
+
+    function ajustarMacroregionDestacada(key) {
+      const bounds = obtenerBoundsMacroregionesDestacadas([key]);
+      if (bounds && SIG_STATE.mapa) SIG_STATE.mapa.fitBounds(bounds.pad(0.08), { maxZoom: 8 });
+    }
+
+    function ajustarMacroregionesDestacadas() {
+      const bounds = obtenerBoundsMacroregionesDestacadas();
+      if (bounds && SIG_STATE.mapa) {
+        SIG_STATE.mapa.fitBounds(bounds.pad(0.08), { maxZoom: 7 });
+      } else {
+        actualizarEstadoMacroregionesDestacadas('No hay macroregiones destacadas para ajustar.');
+      }
+    }
+
+    async function inicializarMacroregionesDestacadas() {
+      asegurarPaneMacroregionesDestacadas();
+      const estado = asegurarEstadoMacroregionesDestacadas();
+      estado.grupo = estado.grupo || L.layerGroup().addTo(SIG_STATE.mapa);
+
+      qs('btnAgregarMacroregionDestacada')?.addEventListener('click', () => agregarMacroregionDestacada(null, { ajustar: true }));
+      qs('btnLimpiarMacroregionesDestacadas')?.addEventListener('click', () => limpiarMacroregionesDestacadas());
+      qs('btnAjustarMacroregionesDestacadas')?.addEventListener('click', () => ajustarMacroregionesDestacadas());
+      qs('buscarMacroregionDestacada')?.addEventListener('input', () => renderizarMacroregionesDestacadasDisponibles());
+      qs('panelMacroregionesDestacadas')?.addEventListener('shown.bs.offcanvas', async () => {
+        await cargarMacroregionesDestacadas();
+        SIG_STATE.mapa?.invalidateSize();
+      });
+
+      await cargarMacroregionesDestacadas();
+    }
+
     // Construye el panel lateral de capas desde configlayers.js.
     function renderizarPanelCapas() {
       const lista = qs('listaCapas');
@@ -1934,6 +2822,8 @@
       }).addTo(mapa);
 
       renderizarPanelCapas();
+      await inicializarDepartamentosDestacados();
+      await inicializarMacroregionesDestacadas();
       for (const capaConfig of SIG_CONFIG.capas.filter(capa => capa.activa)) {
         await activarCapa(capaConfig);
       }
@@ -1952,6 +2842,7 @@
       window.addEventListener('resize', () => mapa.invalidateSize());
       qs('panelCapas')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
       qs('panelFiltros')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
+      qs('panelDepartamentosDestacados')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
     });
   </script>
 </body>

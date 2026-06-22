@@ -9,7 +9,7 @@
 */
 
 // Se crea un objeto global para que sigindex.html pueda leerlo después de cargar este archivo.
-window.SIG_CONFIG_VERSION = '20260617-console-terminal-v5-popup-fix';
+window.SIG_CONFIG_VERSION = '20260621-departamentos-macroregiones-destacadas-v1';
 window.SIG_CONFIG = {
   // Configuración inicial del mapa: centro aproximado de Colombia y zoom nacional.
   mapa: {
@@ -51,49 +51,28 @@ window.SIG_CONFIG = {
     }
   },
 
-  // Configuración del mapa de calor dinámico.
-  // Se calcula en el navegador con los datos filtrados de casos_2026 y sig_casos_public_2026.
-  // No depende de RPC ni de tablas ligeras anteriores.
-  mapaCalor: {
-    unidadInicial: 'departamentos',
-    metricaInicial: 'idr',
-    colorSinDato: '#f8fafc',
-    colorBorde: '#334155',
-    opacidad: 1,
-    grosorLinea: 1.2,
-    colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985'],
-    pesosIDR: {
-      exposicion: 0.35,
-      impacto: 0.40,
-      intensidad: 0.25
-    },
-    capas: {
-      departamentos: {
-        capaId: 'departamentos',
-        nombre: 'Departamentos',
-        propiedadNombre: ['DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'NOMBRE_DPT', 'NOMBRE', 'nombre'],
-        tipoUnidad: 'departamento'
-      },
-      municipios: {
-        capaId: 'municipios',
-        nombre: 'Municipios',
-        propiedadNombre: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE_MPI', 'NOMBRE', 'nombre'],
-        propiedadDepartamento: ['DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO', 'DEPARTAMENTO', 'departamento'],
-        tipoUnidad: 'municipio'
-      }
-    }
-  },
-
-  // Compatibilidad con versiones anteriores que buscaban esta clave.
+  // Configuración del mapa de calor departamental. Se alimenta desde los registros
+  // filtrados en el panel.
   mapaCalorDepartamentos: {
     propiedadNombre: 'DPTO_CNMBR',
-    metricaInicial: 'idr',
+    metricaInicial: 'casos',
     colorSinDato: '#f8fafc',
     colorBorde: '#334155',
     opacidad: 1,
     grosorLinea: 1.2,
     colores: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#075985']
   },
+
+  // Funcionalidad independiente para destacar macroregiones.
+  // Cada macroregión se carga desde un GeoJSON propio y se dibuja sobre la capa Departamentos.
+  macroregionesDestacadas: [
+    { id: 'occidente', nombre: 'Occidente', archivo: './Layers/005occidente.geojson', colorCapa: '#facc15', colorLinea: '#854d0e' },
+    { id: 'norte', nombre: 'Norte', archivo: './Layers/005norte.geojson', colorCapa: '#fb923c', colorLinea: '#9a3412' },
+    { id: 'centro_oriente', nombre: 'Centro Oriente', archivo: './Layers/005centrooriente.geojson', colorCapa: '#60a5fa', colorLinea: '#1d4ed8' },
+    { id: 'amazonia', nombre: 'Amazonía', archivo: './Layers/005amazonia.geojson', colorCapa: '#34d399', colorLinea: '#047857' },
+    { id: 'orinoquia', nombre: 'Orinoquía', archivo: './Layers/005orinoquia.geojson', colorCapa: '#a78bfa', colorLinea: '#6d28d9' }
+  ],
+
 
   // Definición de panes Leaflet. Los panes controlan el orden de dibujo de las capas.
   // Un zIndex menor queda más abajo; un zIndex mayor queda más arriba.
@@ -109,6 +88,8 @@ window.SIG_CONFIG = {
     { id: 'pane8', nombre: 'Nivel 8', zIndex: 490 },
     { id: 'pane9', nombre: 'Nivel 9 · Superior', zIndex: 500 },
     { id: 'labels', nombre: 'Labels · Etiquetas', zIndex: 650, pointerEvents: 'none' },
+    { id: 'paneDepartamentosSeleccionados', nombre: 'Departamentos seleccionados · Sobre departamentos', zIndex: 900 },
+    { id: 'paneMacroregionesSeleccionadas', nombre: 'Macroregiones seleccionadas · Sobre departamentos', zIndex: 920 },
     { id: 'paneCasosTop', nombre: 'Casos · Puntos superiores', zIndex: 1000 },
     { id: 'panePopupsTop', nombre: 'Popups · Sobre marcadores', zIndex: 1300 }
   ],
@@ -178,8 +159,10 @@ window.SIG_CONFIG = {
       opacidad: 1,
       grosorLinea: 1,
       popupCampos: [
-        { etiqueta: 'Nombre', campos: ['MPIO_CNMBR'] },
-        { etiqueta: 'Departamento', campos: ['DEPTO'] }
+        { etiqueta: 'Municipio', campos: ['MPIO_CNMBR', 'MUNICIPIO', 'NOMBRE_MPI', 'NOMBRE', 'nombre'] },
+        { etiqueta: 'Nombre', campos: ['nombre', 'NOMBRE', 'NOMBRE_MPI', 'MPIO_CNMBR'] },
+        { etiqueta: 'DEPTO', campos: ['DEPTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPARTAMENTO'] },
+        { etiqueta: 'Departamento', campos: ['departamento', 'DEPARTAMENTO', 'DPTO_CNMBR', 'DEPARTAMEN', 'DEPTO'] }
       ]
     },
     {
@@ -193,10 +176,10 @@ window.SIG_CONFIG = {
       opacidad: 1,
       grosorLinea: 2,
       popupCampos: [
-        { etiqueta: 'Pueblo', campos: ['PUEBLO', 'Pueblo', 'pueblo', 'ETNIA', 'ETNICO', 'COMUNIDAD'] },
-        { etiqueta: 'Departamento', campos: ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'departamento'] },
-        { etiqueta: 'Municipio', campos: ['MUNICIPIO', 'MPIO_CNMBR', 'NOMBRE_MPI', 'NOM_MPIO', 'municipio'] },
-        { etiqueta: 'Nombre', campos: ['NOMBRE', 'nombre', 'NOMBRE_RES', 'NOM_RESGUARDO', 'RESGUARDO', 'NOM_RESG', 'NOM_RES'] }
+        { etiqueta: 'Pueblo', campos: ['PUEBLO', 'Pueblo', 'pueblo'] },
+        { etiqueta: 'Departamento', campos: ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'departamento'] },
+        { etiqueta: 'Municipio', campos: ['MUNICIPIO', 'MPIO_CNMBR', 'municipio'] },
+        { etiqueta: 'Nombre', campos: ['NOMBRE', 'nombre', 'NOMBRE_RES', 'RESGUARDO'] }
       ]
     }
   ]

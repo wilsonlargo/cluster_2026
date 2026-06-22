@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>SIG · Observatorio</title>
+<!-- SIG · consola terminal v6 + rutas desplazamientos v5 portapapeles + validación -->
+<!-- Bootstrap 5: estructura responsiva y componentes visuales como offcanvas y collapse. -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<!-- Bootstrap Icons: iconos de menús, capas, filtros y controles. -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<!-- Leaflet CSS: estilos base del mapa interactivo. -->
+<link crossorigin="" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" rel="stylesheet">
+<style>
+    /* Variables generales del módulo SIG. */
+    :root {
+      --topbar-h: 64px;
+      --panel-w: 430px;
+      --sig-border: rgba(15, 23, 42, .12);
+      --sig-muted: #667085;
+    }
+
+    /* El documento ocupa toda la pantalla y evita scroll exterior. */
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #f8f9fa;
+    }
+
+    /* Barra superior fija tipo sticky. */
+    .sig-topbar {
+      min-height: var(--topbar-h);
+      z-index: 1030;
+      backdrop-filter: blur(10px);
+    }
+
+    /* Contenedor del mapa: ocupa todo el alto restante de pantalla. */
+    .sig-map-wrap {
+      width: 100vw;
+      height: calc(100vh - var(--topbar-h));
+      height: calc(100dvh - var(--topbar-h));
+    }
+
+    /* Leaflet requiere altura explícita para renderizar correctamente. */
+    #mapaSIG {
+      width: 100%;
+      height: 100%;
+    }
+
+    .leaflet-control-zoom a {
+      text-decoration: none;
+    }
+
+    /* Paneles laterales de capas y filtros. */
+    .sig-offcanvas,
+    .sig-offcanvas-end {
+      --bs-offcanvas-width: min(var(--panel-w), 100vw);
+    }
+
+    .sig-help {
+      color: var(--sig-muted);
+      font-size: .85rem;
+    }
+
+    /* Items del panel de capas. */
+    .layer-item {
+      border: 1px solid var(--sig-border);
+      border-radius: 1rem;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .layer-header {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .7rem .75rem;
+    }
+
+    .layer-color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, .18);
+      flex: 0 0 auto;
+    }
+
+    .layer-settings {
+      border-top: 1px solid rgba(15, 23, 42, .08);
+      background: #fafafa;
+      padding: .85rem;
+    }
+
+    .sig-offcanvas .offcanvas-body,
+    .sig-offcanvas-end .offcanvas-body {
+      overflow-x: hidden;
+    }
+
+    /* Selector de colores reutilizable para capas GeoJSON. */
+    .color-picker-btn {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: .65rem;
+      min-width: 0;
+      border: 0;
+      border-radius: .6rem;
+      background: #f1f3f5;
+      padding: .5rem .7rem;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .color-sample {
+      width: 28px;
+      height: 28px;
+      display: inline-block;
+      border-radius: .35rem;
+      border: 1px solid rgba(0, 0, 0, .18);
+      background: #000;
+      flex: 0 0 auto;
+    }
+
+    .color-palette-menu {
+      position: static !important;
+      transform: none !important;
+      inset: auto !important;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      margin-top: .5rem;
+      padding: .65rem;
+      border-radius: .9rem;
+      overflow: hidden;
+    }
+
+    .color-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+      gap: .45rem;
+      align-items: center;
+    }
+
+    .color-option {
+      width: 100%;
+      max-width: 30px;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      justify-self: center;
+      border-radius: .35rem;
+      border: 1px solid rgba(0, 0, 0, .16);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .color-option.active {
+      outline: 3px solid rgba(13, 110, 253, .24);
+      outline-offset: 2px;
+    }
+
+    /* Bloques internos del panel de filtros. */
+    .filter-block {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .85rem;
+      margin-bottom: .85rem;
+    }
+
+    .filter-block-title {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-weight: 700;
+      margin-bottom: .65rem;
+    }
+
+    .filter-action-btn {
+      min-height: 46px;
+      border-radius: .85rem;
+      font-weight: 600;
+    }
+
+    .filter-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .75rem;
+      height: 100%;
+    }
+
+    .filter-stat .number {
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .filter-stat .label {
+      color: var(--sig-muted);
+      font-size: .74rem;
+      line-height: 1.15;
+    }
+
+    .filter-stat.stat-focus {
+      border-color: rgba(13, 110, 253, .35);
+      background: rgba(13, 110, 253, .06);
+    }
+
+    .filter-stat.stat-warning {
+      border-color: rgba(255, 193, 7, .45);
+      background: rgba(255, 193, 7, .08);
+    }
+
+
+    .filter-stat.stat-compact {
+      padding: .55rem .6rem;
+      border-radius: .85rem;
+      min-height: 58px;
+    }
+
+    .filter-stat.stat-compact .number {
+      font-size: .98rem;
+    }
+
+    .filter-stat.stat-compact .label {
+      font-size: .68rem;
+    }
+
+    .population-note {
+      font-size: .74rem;
+      color: var(--sig-muted);
+      line-height: 1.25;
+    }
+
+    .marker-preview-wrap {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(15, 23, 42, .18);
+      border-radius: .85rem;
+      background: #f8fafc;
+    }
+
+    .marker-preview {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border-style: solid;
+      display: inline-block;
+    }
+
+    #textoFiltrosActivos {
+      line-height: 1.35;
+    }
+
+.heat-legend {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: .35rem;
+      align-items: end;
+    }
+
+    .heat-legend-item {
+      min-height: 34px;
+      border-radius: .45rem;
+      border: 1px solid rgba(15, 23, 42, .10);
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      padding: .25rem;
+      font-size: .68rem;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    .heat-status {
+      border-radius: .85rem;
+      background: #f8fafc;
+      border: 1px solid rgba(15, 23, 42, .10);
+      padding: .6rem .7rem;
+      font-size: .8rem;
+      color: var(--sig-muted);
+    }
+
+
+    .sig-legend-filtros {
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, .18);
+      padding: .75rem .8rem;
+      min-width: 240px;
+      max-width: min(320px, 82vw);
+      max-height: 42vh;
+      overflow: auto;
+      color: #0f172a;
+      font-size: .78rem;
+    }
+
+    .sig-legend-filtros-title {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-weight: 700;
+      margin-bottom: .55rem;
+    }
+
+    .sig-legend-filtros-list {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    .sig-legend-filtros-item {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: .5rem;
+      align-items: start;
+      border-top: 1px solid rgba(15, 23, 42, .08);
+      padding-top: .5rem;
+    }
+
+    .sig-legend-filtros-item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .sig-legend-color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, .35);
+      margin-top: .15rem;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, .9);
+    }
+
+    .sig-legend-filtro-texto {
+      font-weight: 650;
+      line-height: 1.25;
+    }
+
+    .sig-legend-filtro-meta {
+      color: var(--sig-muted);
+      font-size: .72rem;
+      line-height: 1.25;
+      margin-top: .15rem;
+    }
+
+    .sig-legend-calor {
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, .18);
+      padding: .75rem .8rem;
+      min-width: 230px;
+      max-width: min(330px, 82vw);
+      color: #0f172a;
+      font-size: .78rem;
+    }
+
+    .sig-legend-calor-title {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .sig-legend-calor-subtitle {
+      color: var(--sig-muted);
+      font-size: .72rem;
+      line-height: 1.25;
+      margin-bottom: .55rem;
+    }
+
+    .sig-legend-calor-list {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+
+    .sig-legend-calor-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: .45rem;
+      align-items: center;
+    }
+
+    .sig-legend-calor-box {
+      width: 26px;
+      height: 16px;
+      border-radius: .3rem;
+      border: 1px solid rgba(15, 23, 42, .18);
+    }
+
+    .sig-popup-calor .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .4rem;
+    }
+
+    .sig-popup-calor .metric-card {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .65rem;
+      padding: .45rem .5rem;
+      background: #f8fafc;
+    }
+
+    .sig-popup-calor .metric-card .value {
+      font-weight: 800;
+      font-size: .95rem;
+      line-height: 1;
+    }
+
+    .sig-popup-calor .metric-card .label {
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .15rem;
+    }
+
+
+    .console-login-card,
+    .console-query-item,
+    .console-toolbar,
+    .console-help {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .9rem;
+    }
+
+    .console-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .console-help {
+      background: #f8fafc;
+      color: var(--sig-muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .console-query-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      border-bottom: 1px solid rgba(15, 23, 42, .08);
+      padding-bottom: .6rem;
+    }
+
+    .console-empty,
+    .console-loading {
+      border: 1px dashed rgba(15, 23, 42, .18);
+      border-radius: .85rem;
+      background: #f8fafc;
+      color: var(--sig-muted);
+      padding: .75rem;
+      font-size: .82rem;
+    }
+
+    .console-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .5rem;
+    }
+
+    .console-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      background: #f8fafc;
+      padding: .55rem .65rem;
+    }
+
+    .console-stat div {
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .console-stat span {
+      display: block;
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .18rem;
+    }
+
+    .console-table-wrap {
+      max-height: 360px;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      overflow: auto;
+    }
+
+
+
+
+    /* Consola inferior tipo terminal. */
+    .sig-console-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1600;
+      height: min(46vh, 430px);
+      background: #1f2428;
+      color: #f8fafc;
+      border-top: 1px solid rgba(255,255,255,.24);
+      box-shadow: 0 -18px 45px rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      transition: transform .22s ease;
+    }
+
+    .sig-console-dock.collapsed {
+      transform: translateY(calc(100% + 8px));
+    }
+
+    .sig-console-topbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .55rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.24);
+      background: #202529;
+      flex-wrap: wrap;
+    }
+
+    .sig-console-close,
+    .sig-console-action,
+    .sig-console-btn,
+    .sig-console-icon {
+      background: transparent;
+      color: #f8fafc;
+      border: 0;
+      border-radius: .35rem;
+      padding: .35rem .55rem;
+      font-weight: 700;
+    }
+
+    .sig-console-close {
+      font-size: 1.15rem;
+      color: #ffffff;
+      padding-inline: .65rem;
+    }
+
+    .sig-console-action:hover,
+    .sig-console-btn:hover,
+    .sig-console-icon:hover,
+    .sig-console-close:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .sig-console-action-primary,
+    .sig-console-btn-primary {
+      color: #67e8f9;
+    }
+
+    .sig-console-select,
+    .sig-console-input,
+    .sig-console-command-input,
+    .sig-console-textarea {
+      background: #1f2428;
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,.65);
+      border-radius: .45rem;
+      outline: none;
+    }
+
+    .sig-console-select {
+      min-width: 270px;
+      max-width: min(420px, 80vw);
+      padding: .45rem .65rem;
+    }
+
+    .sig-console-auth {
+      margin-left: auto;
+      display: flex;
+      gap: .45rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .sig-console-input {
+      width: 160px;
+      padding: .35rem .5rem;
+    }
+
+    .sig-console-user {
+      color: #a7f3d0;
+      font-size: .82rem;
+    }
+
+    .sig-console-commandbar {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: .6rem;
+      padding: .55rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.16);
+      background: #171b1f;
+    }
+
+    .sig-console-mainprompt {
+      color: #67e8f9;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sig-console-command-input {
+      width: 100%;
+      padding: .45rem .6rem;
+      border-color: rgba(103,232,249,.55);
+    }
+
+    .sig-console-msg {
+      min-height: 24px;
+      padding: .25rem .75rem;
+      font-size: .78rem;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .sig-console-msg-info { color: #cbd5e1; }
+    .sig-console-msg-ok { color: #86efac; }
+    .sig-console-msg-warn { color: #fde68a; }
+    .sig-console-msg-error { color: #fca5a5; }
+
+    .sig-console-items {
+      overflow: auto;
+      flex: 1;
+      padding: .5rem .75rem 1rem;
+    }
+
+    .sig-console-empty,
+    .sig-console-loading,
+    .sig-console-error {
+      color: #cbd5e1;
+      border: 1px dashed rgba(255,255,255,.25);
+      border-radius: .45rem;
+      padding: .65rem;
+      margin: .35rem 0;
+      font-size: .82rem;
+    }
+
+    .sig-console-error {
+      color: #fecaca;
+      border-color: rgba(248,113,113,.45);
+    }
+
+    .sig-console-item {
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: .45rem;
+      margin-bottom: .5rem;
+      overflow: hidden;
+      background: #202529;
+    }
+
+    .sig-console-line {
+      display: grid;
+      grid-template-columns: auto 1fr 56px 56px 56px 56px;
+      align-items: stretch;
+      border-bottom: 1px solid rgba(255,255,255,.22);
+    }
+
+    .sig-console-prompt {
+      color: #67e8f9;
+      padding: .55rem .6rem;
+      font-weight: 800;
+      border-right: 1px solid rgba(255,255,255,.20);
+    }
+
+    .sig-console-textarea {
+      width: 100%;
+      min-height: 46px;
+      resize: vertical;
+      border: 0;
+      border-radius: 0;
+      padding: .55rem .65rem;
+      background: #202529;
+      color: #f8fafc;
+    }
+
+    .sig-console-icon {
+      border-left: 1px solid rgba(255,255,255,.20);
+      border-radius: 0;
+      color: #67e8f9;
+      font-size: 1.35rem;
+    }
+
+    .sig-console-delete {
+      color: #fb7185;
+    }
+
+    .sig-console-copy {
+      color: #a7f3d0;
+    }
+
+    .sig-console-clear {
+      color: #fde68a;
+    }
+
+    .sig-console-marker-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.75);
+      margin-right: .35rem;
+      vertical-align: middle;
+    }
+
+    .sig-console-map-pill {
+      color: #bae6fd;
+    }
+
+    .sig-console-file-input {
+      display: none;
+    }
+
+    .sig-console-result {
+      background: #111417;
+    }
+
+    .sig-console-summary {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      padding: .45rem .6rem;
+      color: #cbd5e1;
+      font-size: .76rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .sig-console-summary span {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: .15rem .45rem;
+    }
+
+    .sig-console-table-wrap {
+      overflow: auto;
+      max-height: 210px;
+    }
+
+    .sig-console-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+      color: #e5e7eb;
+    }
+
+    .sig-console-table th,
+    .sig-console-table td {
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      padding: .35rem .45rem;
+      vertical-align: top;
+    }
+
+    .sig-console-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #1f2933;
+      color: #a7f3d0;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sig-console-cat {
+      max-width: 420px;
+      min-width: 170px;
+    }
+
+    .sig-console-empty-cell {
+      color: #cbd5e1;
+      text-align: center;
+      padding: .8rem !important;
+    }
+
+
+    /* Panel de funcionalidades: rutas de desplazamiento. */
+    .rutas-toolbar {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .rutas-file-input {
+      display: none;
+    }
+
+    .rutas-status {
+      border: 1px solid rgba(15, 23, 42, .10);
+      background: #f8fafc;
+      border-radius: .9rem;
+      padding: .7rem .75rem;
+      color: var(--sig-muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .rutas-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .55rem;
+    }
+
+    .rutas-stat {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: .85rem;
+      background: #fff;
+      padding: .65rem;
+    }
+
+    .rutas-stat .value {
+      font-weight: 850;
+      font-size: 1.05rem;
+      line-height: 1;
+      color: #0f3a5f;
+    }
+
+    .rutas-stat .label {
+      color: var(--sig-muted);
+      font-size: .68rem;
+      margin-top: .25rem;
+      line-height: 1.15;
+    }
+
+    .rutas-list {
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+    }
+
+    .ruta-item {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #fff;
+      padding: .75rem;
+      cursor: pointer;
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .ruta-item:hover,
+    .ruta-item.active {
+      border-color: rgba(13, 110, 253, .40);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+      transform: translateY(-1px);
+    }
+
+    .ruta-item-title {
+      font-weight: 780;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .ruta-item-meta,
+    .ruta-item-place {
+      color: var(--sig-muted);
+      font-size: .78rem;
+      line-height: 1.3;
+    }
+
+    .ruta-item-actions {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      margin-top: .55rem;
+    }
+
+    .ruta-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: .35rem;
+      border: 1px solid rgba(15, 23, 42, .22);
+    }
+
+    .ruta-dot.ok { background: #0ea5e9; }
+    .ruta-dot.warn { background: #f59e0b; }
+    .ruta-dot.empty { background: #e5e7eb; }
+
+    .rutas-detail {
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 1rem;
+      background: #f8fafc;
+      padding: .85rem;
+      font-size: .82rem;
+      color: #334155;
+    }
+
+    .ruta-popup-title {
+      font-weight: 800;
+      color: #0f3a5f;
+      margin-bottom: .35rem;
+    }
+
+    .ruta-popup-table {
+      font-size: .78rem;
+      margin-bottom: 0;
+    }
+
+    .ruta-popup-table th {
+      color: #64748b;
+      padding-right: .6rem;
+      white-space: nowrap;
+    }
+
+    .ruta-marker-origen {
+      background: #0ea5e9;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, .45);
+    }
+
+    .ruta-marker-destino {
+      background: #be123c;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(190, 18, 60, .45);
+    }
+
+    .ruta-edit-form {
+      border-top: 1px solid rgba(15, 23, 42, .10);
+      margin-top: .85rem;
+      padding-top: .85rem;
+    }
+
+    .ruta-edit-form .form-label {
+      font-size: .74rem;
+      font-weight: 750;
+      color: #475569;
+      margin-bottom: .2rem;
+    }
+
+    .ruta-edit-form .form-control,
+    .ruta-edit-form .form-select {
+      font-size: .8rem;
+      border-radius: .65rem;
+    }
+
+    .ruta-danger-zone {
+      border: 1px dashed rgba(190, 18, 60, .25);
+      background: rgba(190, 18, 60, .035);
+      border-radius: .8rem;
+      padding: .6rem;
+      margin-top: .75rem;
+    }
+
+    @media (max-width: 768px) {
+      .sig-console-dock { height: min(58vh, 520px); }
+      .sig-console-line { grid-template-columns: auto 1fr 42px 42px 42px 42px; }
+      .sig-console-auth { width: 100%; margin-left: 0; }
+      .sig-console-input { width: min(220px, 46vw); }
+      .sig-console-select { min-width: min(260px, 72vw); }
+    }
+
+    @media (max-width: 576px) {
+      :root {
+        --topbar-h: 58px;
+      }
+
+      .navbar-brand span {
+        font-size: .95rem;
+      }
+    }
+  </style>
+</link></head>
+<body>
+<!-- Barra superior del módulo SIG. -->
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom sticky-top sig-topbar">
+<div class="container-fluid">
+<a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="sigindex.html">
+<i class="bi bi-globe-americas"></i>
+<span>SIG Observatorio</span>
+</a>
+<button aria-controls="sigTopMenu" aria-expanded="false" aria-label="Abrir menú SIG" class="navbar-toggler" data-bs-target="#sigTopMenu" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<div class="collapse navbar-collapse" id="sigTopMenu">
+<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+<li class="nav-item dropdown">
+<button aria-expanded="false" class="nav-link dropdown-toggle btn btn-link" data-bs-toggle="dropdown" type="button">
+<i class="bi bi-list me-1"></i>Menús
+            </button>
+<ul class="dropdown-menu">
+<li><a class="dropdown-item" href="../index.html"><i class="bi bi-house me-2"></i>Inicio</a></li>
+<li><button class="dropdown-item" disabled="" type="button"><i class="bi bi-map me-2"></i>Vista general</button></li>
+</ul>
+</li>
+<li class="nav-item">
+<button aria-controls="panelCapas" class="nav-link btn btn-link" data-bs-target="#panelCapas" data-bs-toggle="offcanvas" type="button">
+<i class="bi bi-layers me-1"></i>Capas
+            </button>
+</li>
+<li class="nav-item">
+<button aria-controls="panelFiltros" class="nav-link btn btn-link" data-bs-target="#panelFiltros" data-bs-toggle="offcanvas" type="button">
+<i class="bi bi-funnel me-1"></i>Filtros
+            </button>
+</li>
+<li class="nav-item">
+<button aria-controls="panelFiltros" class="nav-link btn btn-link" data-bs-target="#panelFiltros" data-bs-toggle="offcanvas" id="btnAbrirMapaCalor" type="button">
+<i class="bi bi-grid-3x3-gap me-1"></i>Mapa de calor
+            </button>
+</li>
+
+
+<li class="nav-item dropdown">
+<button aria-expanded="false" class="nav-link dropdown-toggle btn btn-link" data-bs-toggle="dropdown" type="button">
+<i class="bi bi-tools me-1"></i>Funcionalidades
+            </button>
+<ul class="dropdown-menu">
+<li><button class="dropdown-item" data-bs-target="#panelRutasDesplazamientos" data-bs-toggle="offcanvas" type="button"><i class="bi bi-signpost-split me-2"></i>Rutas desplazamientos</button></li>
+</ul>
+</li>
+
+<li class="nav-item">
+<button class="nav-link btn btn-link" id="btnToggleConsolaSIG" type="button">
+<i class="bi bi-terminal me-1"></i>Consola
+            </button>
+</li>
+</ul>
+<div class="d-flex align-items-center gap-2 small text-muted">
+<i class="bi bi-info-circle"></i>
+<span id="estadoSIG">Mapa base inicial</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Panel lateral izquierdo de capas GeoJSON. -->
+<aside aria-labelledby="panelCapasLabel" class="offcanvas offcanvas-start sig-offcanvas" id="panelCapas" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelCapasLabel"><i class="bi bi-layers me-2"></i>Capas</h5>
+<div class="sig-help">Activa, desactiva y configura capas GeoJSON.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body">
+<div class="mb-3" id="alertasCapas"></div>
+<div class="d-flex flex-column gap-3" id="listaCapas"></div>
+</div>
+</aside>
+<!-- Panel lateral derecho de filtros y configuración de puntos de casos. -->
+<aside aria-labelledby="panelFiltrosLabel" class="offcanvas offcanvas-end sig-offcanvas-end" id="panelFiltros" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelFiltrosLabel"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+<div class="sig-help">Estado inicial de conexión; filtros aún sin reconstruir.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body"><div data-estado="en-blanco" id="panelFiltrosContenido"></div></div>
+</aside>
+
+
+<!-- Panel lateral de funcionalidades: rutas de desplazamiento. -->
+<aside aria-labelledby="panelRutasDesplazamientosLabel" class="offcanvas offcanvas-end sig-offcanvas-end" id="panelRutasDesplazamientos" tabindex="-1">
+<div class="offcanvas-header border-bottom">
+<div>
+<h5 class="offcanvas-title fw-bold mb-0" id="panelRutasDesplazamientosLabel"><i class="bi bi-signpost-split me-2"></i>Rutas desplazamientos</h5>
+<div class="sig-help">Carga rutas unificadas, lista desplazamientos, busca coordenadas, permite mover puntos y dibuja origen, destino y línea.</div>
+</div>
+<button aria-label="Cerrar" class="btn-close" data-bs-dismiss="offcanvas" type="button"></button>
+</div>
+<div class="offcanvas-body">
+<div class="rutas-toolbar mb-3">
+  <button class="btn btn-primary btn-sm rounded-pill" id="btnCargarRutasUnificadas" type="button"><i class="bi bi-signpost-split me-1"></i>Cargar rutas unificadas</button>
+  <button class="btn btn-outline-primary btn-sm rounded-pill" id="btnCargarRutasDesplazamientos" type="button"><i class="bi bi-upload me-1"></i>Cargar otro archivo</button>
+  <button class="btn btn-outline-dark btn-sm rounded-pill" id="btnAbrirPegarRutasJson" type="button"><i class="bi bi-clipboard-plus me-1"></i>Pegar JSON</button>
+  <button class="btn btn-outline-success btn-sm rounded-pill" id="btnNuevaRutaDesplazamiento" type="button"><i class="bi bi-plus-circle me-1"></i>Nueva ruta</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnExportarRutasDesplazamientos" type="button"><i class="bi bi-download me-1"></i>Exportar JSON</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill" id="btnAjustarRutasDesplazamientos" type="button"><i class="bi bi-arrows-fullscreen me-1"></i>Ajustar mapa</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnEliminarRutaDesplazamiento" type="button"><i class="bi bi-x-circle me-1"></i>Eliminar ruta</button>
+  <button class="btn btn-outline-danger btn-sm rounded-pill" id="btnLimpiarRutasDesplazamientos" type="button"><i class="bi bi-trash me-1"></i>Limpiar</button>
+  <input accept="application/json,.json,text/csv,.csv" class="rutas-file-input" id="archivoRutasDesplazamientos" type="file" />
+</div>
+
+<div class="rutas-status mb-3" id="estadoRutasDesplazamientos">
+  Puedes cargar el archivo configurado de rutas unificadas, crear una ruta nueva, editar sus datos, buscar coordenadas, marcar origen/destino sobre el mapa, arrastrar los puntos, eliminar registros y exportar un JSON actualizado con los cambios.
+</div>
+
+<div class="rutas-summary-grid mb-3" id="resumenRutasDesplazamientos">
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Registros</div></div>
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Rutas trazadas</div></div>
+  <div class="rutas-stat"><div class="value">0</div><div class="label">Con punto parcial</div></div>
+</div>
+
+<div class="mb-3">
+  <label class="form-label fw-semibold" for="buscarRutasDesplazamientos">Buscar desplazamiento</label>
+  <input class="form-control" id="buscarRutasDesplazamientos" placeholder="Buscar por lugar, departamento, pueblo, actor, año, tipo o personas" type="search" />
+</div>
+
+<div class="rutas-detail mb-3" id="detalleRutaDesplazamiento">
+  Selecciona un desplazamiento de la lista para ver el detalle o marcar puntos.
+</div>
+
+<div class="rutas-list" id="listaRutasDesplazamientos"></div>
+</div>
+</aside>
+
+<!-- Modal para pegar y validar JSON de rutas. -->
+<div class="modal fade" id="modalPegarRutasJson" tabindex="-1" aria-labelledby="modalPegarRutasJsonLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="modalPegarRutasJsonLabel"><i class="bi bi-clipboard-plus me-2"></i>Pegar JSON de rutas</h5>
+          <div class="text-muted small">Pega una ruta individual, un archivo de rutas unificadas o un JSON exportado desde este módulo.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info py-2 small">
+          El validador revisa estructura, origen, destino y coordenadas. Si una ruta no tiene coordenadas, puede agregarse y luego marcarse en el mapa o buscarse por lugar.
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <button class="btn btn-outline-primary btn-sm" id="btnLeerPortapapelesRutas" type="button"><i class="bi bi-clipboard me-1"></i>Leer portapapeles</button>
+          <button class="btn btn-outline-secondary btn-sm" id="btnValidarTextoRutas" type="button"><i class="bi bi-check2-square me-1"></i>Validar</button>
+          <button class="btn btn-outline-danger btn-sm" id="btnLimpiarTextoRutas" type="button"><i class="bi bi-eraser me-1"></i>Limpiar texto</button>
+        </div>
+        <textarea id="textoRutasJsonPegado" class="form-control font-monospace" rows="14" spellcheck="false" placeholder='Pega aquí el JSON de rutas...'></textarea>
+        <div class="mt-3" id="resultadoValidacionRutasJson"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-primary" id="btnAgregarJsonPegadoRutas" disabled><i class="bi bi-plus-circle me-1"></i>Agregar al listado</button>
+        <button type="button" class="btn btn-primary" id="btnReemplazarJsonPegadoRutas" disabled><i class="bi bi-arrow-repeat me-1"></i>Reemplazar listado</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Área principal del SIG. -->
+<main class="sig-map-wrap">
+<div aria-label="Mapa SIG del Observatorio" id="mapaSIG"></div>
+</main>
+
+<!-- Consola inferior tipo terminal. -->
+<section id="consolaSIGDock" class="sig-console-dock collapsed" aria-label="Consola SIG">
+  <div class="sig-console-topbar">
+    <button id="btnCerrarConsolaSIG" class="sig-console-close" type="button" aria-label="Cerrar consola">X</button>
+    <select id="consolaPreset" class="sig-console-select" aria-label="Consultas rápidas">
+      <option value="">Filtro extendido</option>
+      <option value='grupo:departamento año:2026'>Por departamento · año 2026</option>
+      <option value='grupo:municipio año:2026 ordenar:idr limite:50'>Por municipio · IDR 2026</option>
+      <option value='grupo:macrotipo año:2026 personas&gt;0'>Por macrotipo · con personas</option>
+      <option value='grupo:pueblo año:2026 detalle:"amenaza"'>Por pueblo · detalle contiene amenaza</option>
+      <option value='grupo:fuente año:2026 fuente:"Defensoría"'>Por fuente</option>
+    </select>
+    <button id="btnConsolaGuardarLista" class="sig-console-action" type="button">Guardar lista</button>
+    <button id="btnConsolaCargarLista" class="sig-console-action" type="button">Cargar lista</button>
+    <input id="archivoConsolaLista" class="sig-console-file-input" type="file" accept="application/json,.json" />
+    <button id="btnConsolaLimpiarTodo" class="sig-console-action" type="button">Limpiar</button>
+    <button id="btnConsolaAgregar" class="sig-console-action" type="button">Agregar</button>
+    <button id="btnConsolaEjecutarTodo" class="sig-console-action sig-console-action-primary" type="button">Ejecutar</button>
+    <div id="consolaAuthZona" class="sig-console-auth"></div>
+  </div>
+  <div class="sig-console-commandbar">
+    <span class="sig-console-mainprompt">consulta =&gt;</span>
+    <input id="consolaComando" class="sig-console-command-input" type="text" spellcheck="false" placeholder='grupo:departamento año:2026 macrotipo:"Confinamiento" detalle:"amenaza" personas&gt;100 ordenar:idr limite:50' />
+  </div>
+  <div id="consolaMensaje" class="sig-console-msg sig-console-msg-info"></div>
+  <div id="consolaItems" class="sig-console-items"></div>
+</section>
+<!-- Bootstrap JS: activa offcanvas, dropdowns y collapse. -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Leaflet JS: librería principal del mapa. -->
+<script crossorigin="" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Supabase JS: cliente público para prueba controlada de acceso a la vista sig_casos_public_2026. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Configuración externa de capas, panes, colores y estilo base de casos. -->
+<script src="./configlayers.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<!-- Lógica externa base del panel de filtros y puntos de casos. -->
+<script src="./datasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<!-- Consola técnica autenticada del SIG. -->
+<script src="./consolasig.js?v=20260617-console-terminal-v6-view-compatible"></script>
+<!-- Funcionalidad externa para rutas de desplazamiento cargadas desde archivo. -->
+<script src="./desplazamientosig.js?v=20260618-rutas-v5-portapapeles-validacion"></script>
+<script>
+    // Estado interno del SIG compartido con datasig.js.
+    const SIG_STATE = window.SIG_STATE = {
+      mapa: null,
+      supabaseClient: null,
+      capaCasos: null,
+      capasPorId: new Map(),
+      geojsonPorId: new Map(),
+      cargandoPorId: new Set(),
+      casosConsultados: [],
+      mapaCalorDepartamentos: null,
+      ultimoClickDepartamentoMs: 0
+    };
+
+    // Atajo para obtener elementos del DOM por id.
+    function qs(id) {
+      return document.getElementById(id);
+    }
+
+    // Escapa texto antes de insertarlo en HTML.
+    function escapeHtml(valor) {
+      return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[caracter]));
+    }
+
+    // Normaliza texto localmente para cruces entre GeoJSON y registros.
+    function normTxtLocal(valor) {
+      return String(valor ?? '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    // Obtiene el nombre de departamento desde el GeoJSON. DPTO_CNMBR es la variable principal.
+    function obtenerNombreDepartamentoFeature(feature) {
+      const props = feature?.properties || {};
+      return props.DPTO_CNMBR || props.DEPARTAMEN || props.DEPTO || props.NOMBRE_DPT || props.NOMBRE || props.nombre || '';
+    }
+
+    // Muestra avisos en el panel de capas.
+    function mostrarAvisoCapas(tipo, mensaje) {
+      const contenedor = qs('alertasCapas');
+      if (!contenedor) return;
+      contenedor.innerHTML = `<div class="alert alert-${tipo} py-2 mb-0" role="alert">${escapeHtml(mensaje)}</div>`;
+    }
+
+    // Actualiza el texto de estado en la barra superior.
+    function actualizarEstado(texto) {
+      const estado = qs('estadoSIG');
+      if (estado) estado.textContent = texto;
+    }
+
+    // Crea los panes de Leaflet declarados en configlayers.js.
+    function crearPanesLeaflet(mapa) {
+      SIG_CONFIG.panes.forEach(paneConfig => {
+        const pane = mapa.getPane(paneConfig.id) || mapa.createPane(paneConfig.id);
+        pane.style.zIndex = String(paneConfig.zIndex);
+        pane.style.pointerEvents = paneConfig.pointerEvents || 'auto';
+      });
+    }
+
+    // Construye el estilo Leaflet de una capa GeoJSON.
+    function obtenerEstiloCapa(capaConfig) {
+      return {
+        pane: capaConfig.pane,
+        color: capaConfig.colorLinea,
+        weight: Number(capaConfig.grosorLinea),
+        opacity: Number(capaConfig.opacidad),
+        fillColor: capaConfig.colorCapa,
+        fillOpacity: Number(capaConfig.opacidad),
+        lineCap: 'round',
+        lineJoin: 'round'
+      };
+    }
+
+    // Obtiene una propiedad por nombre exacto o equivalente, sin depender de mayúsculas/minúsculas.
+    function obtenerPropiedadFlexible(props, campoSolicitado) {
+      if (!props || !campoSolicitado) return undefined;
+      const candidatos = Array.isArray(campoSolicitado) ? campoSolicitado : [campoSolicitado];
+      const entradas = Object.entries(props);
+
+      for (const campo of candidatos) {
+        if (Object.prototype.hasOwnProperty.call(props, campo)) return props[campo];
+      }
+
+      for (const campo of candidatos) {
+        const buscado = String(campo).trim().toLowerCase();
+        const encontrado = entradas.find(([clave]) => String(clave).trim().toLowerCase() === buscado);
+        if (encontrado) return encontrado[1];
+      }
+
+      for (const campo of candidatos) {
+        const buscado = normTxtLocal(campo).replace(/[^a-z0-9]/g, '');
+        const encontrado = entradas.find(([clave]) => normTxtLocal(clave).replace(/[^a-z0-9]/g, '') === buscado);
+        if (encontrado) return encontrado[1];
+      }
+
+      return undefined;
+    }
+
+    function valorVisible(valor) {
+      return valor !== null && valor !== undefined && String(valor).trim() !== '';
+    }
+
+    // Respaldo semántico para GeoJSON con nombres de campos distintos.
+    // Mantiene los popups importantes de municipios y resguardos aunque el archivo cambie mayúsculas,
+    // guiones bajos o nombres como NOM_MPIO / NOM_RESGUARDO.
+    function obtenerPropiedadPorEtiqueta(props, etiqueta) {
+      if (!props || !etiqueta) return undefined;
+      const etiquetaNorm = normTxtLocal(etiqueta).replace(/[^a-z0-9]/g, '');
+      const entradas = Object.entries(props);
+
+      const patrones = [];
+      if (etiquetaNorm.includes('municipio')) patrones.push('municip', 'mpio', 'muni');
+      if (etiquetaNorm.includes('departamento') || etiquetaNorm === 'depto') patrones.push('depart', 'depto', 'dpto');
+      if (etiquetaNorm.includes('pueblo')) patrones.push('pueblo', 'etnia', 'etnico');
+      if (etiquetaNorm.includes('nombre')) patrones.push('nombre', 'name', 'nom', 'resguardo', 'resg');
+
+      for (const patron of patrones) {
+        const encontrado = entradas.find(([clave, valor]) => {
+          if (!valorVisible(valor)) return false;
+          const claveNorm = normTxtLocal(clave).replace(/[^a-z0-9]/g, '');
+          return claveNorm.includes(patron);
+        });
+        if (encontrado) return encontrado[1];
+      }
+
+      return undefined;
+    }
+
+    function obtenerValorPopupConfigurado(props, item) {
+      const directo = obtenerPropiedadFlexible(props, item?.campos || item?.campo);
+      if (valorVisible(directo)) return directo;
+      return obtenerPropiedadPorEtiqueta(props, item?.etiqueta || item?.campo);
+    }
+
+    function construirTablaPopupConfigurada(feature, capaConfig) {
+      const props = feature?.properties || {};
+      const camposConfigurados = Array.isArray(capaConfig?.popupCampos) ? capaConfig.popupCampos : [];
+
+      if (camposConfigurados.length) {
+        const filas = camposConfigurados.map(item => {
+          const valor = obtenerValorPopupConfigurado(props, item);
+          if (!valorVisible(valor)) return '';
+          return `<tr><th class="text-muted pe-2">${escapeHtml(item.etiqueta || item.campo)}</th><td>${escapeHtml(valor)}</td></tr>`;
+        }).join('');
+
+        if (filas) return `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`;
+      }
+
+      const filasGenericas = Object.entries(props)
+        .filter(([, valor]) => valorVisible(valor))
+        .slice(0, 8)
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
+
+      return filasGenericas
+        ? `<table class="table table-sm mb-0"><tbody>${filasGenericas}</tbody></table>`
+        : '<div class="text-muted small">Sin información en los campos configurados.</div>';
+    }
+
+
+    function crearPopupMunicipiosExacto(feature, capaConfig) {
+      const props = feature?.properties || {};
+      const nombre = obtenerPropiedadFlexible(props, ['MPIO_CNMBR']);
+      const departamento = obtenerPropiedadFlexible(props, ['DEPTO']);
+      const filas = [
+        ['Nombre', nombre],
+        ['Departamento', departamento]
+      ]
+        .filter(([, valor]) => valorVisible(valor))
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
+
+      const cuerpo = filas
+        ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`
+        : '<div class="text-muted small">Sin información en MPIO_CNMBR / DEPTO.</div>';
+
+      return `<div class="sig-popup-atributos" style="min-width:220px; max-width:420px"><div class="fw-bold mb-2">${escapeHtml(capaConfig?.nombre || 'Municipios')}</div>${cuerpo}</div>`;
+    }
+
+    function crearPopupResguardosExacto(feature, capaConfig) {
+      const props = feature?.properties || {};
+      const pueblo = obtenerPropiedadFlexible(props, ['PUEBLO', 'Pueblo', 'pueblo', 'ETNIA', 'ETNICO', 'COMUNIDAD']);
+      const departamento = obtenerPropiedadFlexible(props, ['DEPARTAMENTO', 'DEPTO', 'DPTO_CNMBR', 'DPTO_NOMBRE', 'DEPARTAMEN', 'departamento']);
+      const municipio = obtenerPropiedadFlexible(props, ['MUNICIPIO', 'MPIO_CNMBR', 'NOMBRE_MPI', 'NOM_MPIO', 'municipio']);
+      const nombre = obtenerPropiedadFlexible(props, ['NOMBRE', 'nombre', 'NOMBRE_RES', 'NOM_RESGUARDO', 'RESGUARDO', 'NOM_RESG', 'NOM_RES']);
+      const filas = [
+        ['Pueblo', pueblo],
+        ['Departamento', departamento],
+        ['Municipio', municipio],
+        ['Nombre', nombre]
+      ]
+        .filter(([, valor]) => valorVisible(valor))
+        .map(([clave, valor]) => `<tr><th class="text-muted pe-2">${escapeHtml(clave)}</th><td>${escapeHtml(valor)}</td></tr>`)
+        .join('');
+
+      const cuerpo = filas
+        ? `<table class="table table-sm mb-0"><tbody>${filas}</tbody></table>`
+        : construirTablaPopupConfigurada(feature, capaConfig);
+
+      return `<div class="sig-popup-atributos" style="min-width:240px; max-width:430px"><div class="fw-bold mb-2">${escapeHtml(capaConfig?.nombre || 'Resguardos')}</div>${cuerpo}</div>`;
+    }
+
+    function crearPopupAtributosGeoJSON(feature, capaConfig) {
+      if (capaConfig?.id === 'municipios') return crearPopupMunicipiosExacto(feature, capaConfig);
+      if (capaConfig?.id === 'resguardos') return crearPopupResguardosExacto(feature, capaConfig);
+      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
+      const tabla = construirTablaPopupConfigurada(feature, capaConfig);
+      return `<div class="sig-popup-atributos" style="min-width:220px; max-width:420px"><div class="fw-bold mb-2">${escapeHtml(nombreCapa)}</div>${tabla}</div>`;
+    }
+
+    // Crea contenido de popup para atributos de GeoJSON usando la configuración de cada layer.
+    // Si hay mapa de calor activo, solo se combina con la capa objetivo; no reemplaza los popups
+    // configurados de municipios o resguardos.
+    function crearPopupDesdePropiedades(feature, capaConfig) {
+      const nombreCapa = typeof capaConfig === 'string' ? capaConfig : (capaConfig?.nombre || 'Capa');
+      const popupAtributos = crearPopupAtributosGeoJSON(feature, capaConfig);
+      const popupCalor = window.SIG_DATOS?.crearPopupMapaCalor?.(feature, capaConfig, nombreCapa)
+        || window.SIG_DATOS?.crearPopupDepartamentoCalor?.(feature, capaConfig, nombreCapa);
+
+      if (!popupCalor) return popupAtributos;
+
+      // Departamentos conserva el popup enriquecido del mapa de calor como principal.
+      if (capaConfig?.id === 'departamentos') return popupCalor;
+
+      // Municipios conserva sus campos de capa y añade el bloque de calor cuando aplique.
+      if (capaConfig?.id === 'municipios') {
+        return `<div style="min-width:300px; max-width:460px">${popupAtributos}<hr class="my-2">${popupCalor}</div>`;
+      }
+
+      // Resguardos y demás capas nunca se reemplazan por el mapa de calor.
+      return popupAtributos;
+    }
+
+    // Abre un popup Leaflet real sobre el punto exacto del clic.
+    // Para departamentos usamos L.popup().openOn(mapa), no solo bindPopup(),
+    // porque los polígonos multiparte pueden fallar al calcular un centro automático.
+    function abrirPopupLeaflet(feature, layer, capaConfig, event) {
+      const html = crearPopupDesdePropiedades(feature, capaConfig);
+      const latlng = event?.latlng
+        || (layer?.getBounds ? layer.getBounds().getCenter() : SIG_STATE.mapa.getCenter());
+
+      if (event?.originalEvent) {
+        L.DomEvent.stopPropagation(event.originalEvent);
+        L.DomEvent.preventDefault(event.originalEvent);
+      }
+
+      L.popup({
+        pane: 'panePopupsTop',
+        maxWidth: 460,
+        minWidth: 300,
+        autoPan: true,
+        closeButton: true,
+        className: capaConfig.id === 'departamentos' ? 'sig-popup-leaflet-departamento' : ''
+      })
+        .setLatLng(latlng)
+        .setContent(html)
+        .openOn(SIG_STATE.mapa);
+    }
+
+
+    // Sube temporalmente la capa de departamentos por encima de municipios/resguardos
+    // para que el clic sobre polígonos departamentales no quede capturado por otra capa.
+    function asegurarDepartamentosClicables() {
+      const paneCasos = SIG_STATE.mapa?.getPane('paneCasosTop') || SIG_STATE.mapa?.getPane('pane9');
+      const panePopups = SIG_STATE.mapa?.getPane('panePopupsTop') || SIG_STATE.mapa?.createPane?.('panePopupsTop');
+      if (paneCasos) {
+        paneCasos.style.zIndex = '1000';
+        paneCasos.style.pointerEvents = 'auto';
+      }
+      if (panePopups) {
+        panePopups.style.zIndex = '1300';
+        panePopups.style.pointerEvents = 'auto';
+      }
+    }
+
+    // Fallback geométrico: si otra capa captura el clic y el evento directo del
+    // departamento no se dispara, se identifica el departamento bajo el cursor.
+    function puntoEnAnilloGeoJSON(punto, anillo) {
+      const x = punto.lng;
+      const y = punto.lat;
+      let dentro = false;
+      for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+        const xi = Number(anillo[i][0]);
+        const yi = Number(anillo[i][1]);
+        const xj = Number(anillo[j][0]);
+        const yj = Number(anillo[j][1]);
+        const intersecta = ((yi > y) !== (yj > y)) &&
+          (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-12) + xi);
+        if (intersecta) dentro = !dentro;
+      }
+      return dentro;
+    }
+
+    function puntoEnPoligonoGeoJSON(punto, poligono) {
+      if (!Array.isArray(poligono) || !poligono.length) return false;
+      if (!puntoEnAnilloGeoJSON(punto, poligono[0])) return false;
+      // Los anillos internos son huecos.
+      for (let i = 1; i < poligono.length; i += 1) {
+        if (puntoEnAnilloGeoJSON(punto, poligono[i])) return false;
+      }
+      return true;
+    }
+
+    function puntoEnFeatureDepartamento(punto, feature) {
+      const geom = feature?.geometry;
+      if (!geom) return false;
+      if (geom.type === 'Polygon') return puntoEnPoligonoGeoJSON(punto, geom.coordinates);
+      if (geom.type === 'MultiPolygon') return (geom.coordinates || []).some(poligono => puntoEnPoligonoGeoJSON(punto, poligono));
+      return false;
+    }
+
+    function buscarDepartamentoEnLatLng(latlng) {
+      const capa = SIG_STATE.capasPorId.get('departamentos');
+      if (!capa || !latlng) return null;
+      let encontrado = null;
+      capa.eachLayer(layer => {
+        if (encontrado || !layer?.feature) return;
+        if (layer.getBounds && !layer.getBounds().contains(latlng)) return;
+        if (puntoEnFeatureDepartamento(latlng, layer.feature)) encontrado = layer;
+      });
+      return encontrado;
+    }
+
+    function abrirPopupDepartamentoFallback(event) {
+      const capaConfig = SIG_CONFIG.capas.find(capa => capa.id === 'departamentos');
+      if (!capaConfig || !SIG_STATE.capasPorId.has('departamentos')) return;
+      // Evita duplicar cuando el clic directo de cualquier capa sí funcionó.
+      if (Date.now() - Number(SIG_STATE.ultimoClickCapaMs || 0) < 220) return;
+      if (Date.now() - Number(SIG_STATE.ultimoClickDepartamentoMs || 0) < 220) return;
+      const layer = buscarDepartamentoEnLatLng(event.latlng);
+      if (!layer) return;
+      abrirPopupLeaflet(layer.feature, layer, capaConfig, event);
+    }
+
+    // Crea una capa Leaflet desde un GeoJSON cargado.
+    function crearCapaLeaflet(capaConfig, geojson) {
+      const estilo = obtenerEstiloCapa(capaConfig);
+      return L.geoJSON(geojson, {
+        pane: capaConfig.pane,
+        interactive: true,
+        bubblingMouseEvents: false,
+        style: feature => window.SIG_DATOS?.obtenerEstiloDepartamentoCalor?.(feature, capaConfig, estilo) || estilo,
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, { ...estilo, radius: Math.max(4, Number(capaConfig.grosorLinea) + 3) }),
+        onEachFeature: (feature, layer) => {
+          layer._sigCapaId = capaConfig.id;
+
+          if (capaConfig.id === 'departamentos') {
+            // Popup con API nativa de Leaflet: L.popup().setLatLng().setContent().openOn(map).
+            // También se deja bindPopup como respaldo para navegadores/capas multipolígono.
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig), {
+              pane: 'panePopupsTop',
+              maxWidth: 460,
+              minWidth: 300,
+              autoPan: true,
+              closeButton: true,
+              className: 'sig-popup-leaflet-departamento'
+            });
+            layer.on('click', event => {
+              SIG_STATE.ultimoClickCapaMs = Date.now();
+              SIG_STATE.ultimoClickDepartamentoMs = Date.now();
+              abrirPopupLeaflet(feature, layer, capaConfig, event);
+            });
+            layer.on('mouseover', () => {
+              if (layer.setStyle) {
+                layer.setStyle({ weight: Math.max(2, Number(capaConfig.grosorLinea || 1) + 1), opacity: 1 });
+              }
+              if (layer.bringToFront) layer.bringToFront();
+            });
+            layer.on('mouseout', () => window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true }));
+          } else {
+            layer.bindPopup(() => crearPopupDesdePropiedades(feature, capaConfig), {
+              pane: 'panePopupsTop',
+              maxWidth: 420,
+              autoPan: true
+            });
+            layer.on('click', event => {
+              SIG_STATE.ultimoClickCapaMs = Date.now();
+              abrirPopupLeaflet(feature, layer, capaConfig, event);
+            });
+          }
+        }
+      });
+    }
+
+    // Carga un archivo GeoJSON una sola vez y lo conserva en memoria.
+    async function cargarGeoJSON(capaConfig) {
+      if (SIG_STATE.geojsonPorId.has(capaConfig.id)) return SIG_STATE.geojsonPorId.get(capaConfig.id);
+      if (SIG_STATE.cargandoPorId.has(capaConfig.id)) return null;
+      SIG_STATE.cargandoPorId.add(capaConfig.id);
+      actualizarEstado(`Cargando ${capaConfig.nombre}...`);
+
+      try {
+        const respuesta = await fetch(capaConfig.archivo);
+        if (!respuesta.ok) throw new Error(`No se pudo cargar ${capaConfig.archivo}`);
+        const geojson = await respuesta.json();
+        SIG_STATE.geojsonPorId.set(capaConfig.id, geojson);
+        actualizarEstado(`${capaConfig.nombre} cargada`);
+        return geojson;
+      } catch (error) {
+        mostrarAvisoCapas('warning', `No se encontró o no se pudo leer: ${capaConfig.archivo}`);
+        actualizarEstado('Revisa archivos GeoJSON');
+        const check = qs(`check-${capaConfig.id}`);
+        if (check) check.checked = false;
+        capaConfig.activa = false;
+        return null;
+      } finally {
+        SIG_STATE.cargandoPorId.delete(capaConfig.id);
+      }
+    }
+
+    // Activa una capa GeoJSON en el mapa.
+    async function activarCapa(capaConfig) {
+      const geojson = await cargarGeoJSON(capaConfig);
+      if (!geojson || !SIG_STATE.mapa) return;
+
+      if (SIG_STATE.capasPorId.has(capaConfig.id)) {
+        SIG_STATE.mapa.removeLayer(SIG_STATE.capasPorId.get(capaConfig.id));
+      }
+
+      const capaLeaflet = crearCapaLeaflet(capaConfig, geojson).addTo(SIG_STATE.mapa);
+      SIG_STATE.capasPorId.set(capaConfig.id, capaLeaflet);
+      capaConfig.activa = true;
+      actualizarColorIndicador(capaConfig);
+      if (capaConfig.id === 'departamentos' || capaConfig.id === 'municipios') {
+        asegurarDepartamentosClicables();
+        window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
+      }
+      actualizarEstado(`${capaConfig.nombre} activa`);
+    }
+
+    // Desactiva una capa quitándola del mapa.
+    function desactivarCapa(capaConfig) {
+      const capaLeaflet = SIG_STATE.capasPorId.get(capaConfig.id);
+      if (capaLeaflet && SIG_STATE.mapa) SIG_STATE.mapa.removeLayer(capaLeaflet);
+      SIG_STATE.capasPorId.delete(capaConfig.id);
+      capaConfig.activa = false;
+      actualizarEstado(`${capaConfig.nombre} desactivada`);
+    }
+
+    // Recrea una capa cuando se cambia su pane o posición.
+    async function recrearCapaSiEstaActiva(capaConfig) {
+      if (!capaConfig.activa) return;
+      desactivarCapa(capaConfig);
+      await activarCapa(capaConfig);
+    }
+
+    // Aplica cambios visuales a una capa activa.
+    async function actualizarEstiloCapa(capaConfig, requiereRecrear = false) {
+      if (requiereRecrear) {
+        await recrearCapaSiEstaActiva(capaConfig);
+        return;
+      }
+
+      const capaLeaflet = SIG_STATE.capasPorId.get(capaConfig.id);
+      if (capaLeaflet) {
+        capaLeaflet.setStyle(obtenerEstiloCapa(capaConfig));
+        capaLeaflet.eachLayer(layer => {
+          if (layer instanceof L.CircleMarker) {
+            layer.setStyle({ ...obtenerEstiloCapa(capaConfig), radius: Math.max(4, Number(capaConfig.grosorLinea) + 3) });
+          }
+        });
+      }
+      if (capaConfig.id === 'departamentos' || capaConfig.id === 'municipios') {
+        asegurarDepartamentosClicables();
+        window.SIG_DATOS?.refrescarMapaCalorDepartamentos?.({ silencioso: true });
+      }
+      actualizarColorIndicador(capaConfig);
+    }
+
+    // Activa una capa por id desde módulos externos como datasig.js.
+    async function activarCapaPorId(id) {
+      const capaConfig = SIG_CONFIG.capas.find(capa => capa.id === id);
+      if (!capaConfig) return null;
+      const check = qs(`check-${id}`);
+      if (check) check.checked = true;
+      await activarCapa(capaConfig);
+      return SIG_STATE.capasPorId.get(id) || null;
+    }
+
+    window.SIG_CAPAS = {
+      activarCapaPorId,
+      obtenerNombreDepartamentoFeature,
+      normTxtLocal
+    };
+
+    // Actualiza el punto de color visible en la fila de la capa.
+    function actualizarColorIndicador(capaConfig) {
+      const dot = qs(`dot-${capaConfig.id}`);
+      if (dot) dot.style.background = capaConfig.colorCapa;
+    }
+
+    // Crea un selector de color reutilizable para capa y línea.
+    function crearSelectorColor({ id, etiqueta, valorInicial, onChange }) {
+      const contenedor = document.createElement('div');
+      contenedor.className = 'dropdown';
+
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'color-picker-btn dropdown-toggle';
+      boton.setAttribute('data-bs-toggle', 'dropdown');
+      boton.setAttribute('aria-expanded', 'false');
+
+      const muestra = document.createElement('span');
+      muestra.className = 'color-sample';
+      muestra.id = `${id}-muestra`;
+      muestra.style.background = valorInicial;
+
+      const texto = document.createElement('span');
+      texto.textContent = etiqueta;
+      boton.append(muestra, texto);
+
+      const menu = document.createElement('div');
+      menu.className = 'dropdown-menu color-palette-menu shadow';
+      const grilla = document.createElement('div');
+      grilla.className = 'color-grid';
+
+      SIG_CONFIG.paletaColores.forEach(color => {
+        const opcion = document.createElement('button');
+        opcion.type = 'button';
+        opcion.className = 'color-option';
+        opcion.style.background = color;
+        opcion.title = color;
+        opcion.setAttribute('aria-label', `Seleccionar color ${color}`);
+        if (color.toLowerCase() === String(valorInicial).toLowerCase()) opcion.classList.add('active');
+        opcion.addEventListener('click', () => {
+          muestra.style.background = color;
+          grilla.querySelectorAll('.color-option').forEach(btn => btn.classList.remove('active'));
+          opcion.classList.add('active');
+          onChange(color);
+        });
+        grilla.appendChild(opcion);
+      });
+
+      menu.appendChild(grilla);
+      contenedor.append(boton, menu);
+      return contenedor;
+    }
+
+    // Crea selector de opacidad para capas GeoJSON.
+    function crearSelectorOpacidad(capaConfig) {
+      const select = document.createElement('select');
+      select.className = 'form-select';
+      select.id = `opacidad-${capaConfig.id}`;
+      for (let valor = 0; valor <= 100; valor += 10) {
+        const option = document.createElement('option');
+        option.value = String(valor / 100);
+        option.textContent = `${valor}%`;
+        if (Number(option.value) === Number(capaConfig.opacidad)) option.selected = true;
+        select.appendChild(option);
+      }
+      select.addEventListener('change', async () => {
+        capaConfig.opacidad = Number(select.value);
+        await actualizarEstiloCapa(capaConfig);
+      });
+      return select;
+    }
+
+    // Crea selector de grosor de línea para capas GeoJSON.
+    function crearSelectorGrosor(capaConfig) {
+      const select = document.createElement('select');
+      select.className = 'form-select';
+      select.id = `grosor-${capaConfig.id}`;
+      for (let valor = 0; valor <= 10; valor += 1) {
+        const option = document.createElement('option');
+        option.value = String(valor);
+        option.textContent = String(valor);
+        if (Number(option.value) === Number(capaConfig.grosorLinea)) option.selected = true;
+        select.appendChild(option);
+      }
+      select.addEventListener('change', async () => {
+        capaConfig.grosorLinea = Number(select.value);
+        await actualizarEstiloCapa(capaConfig);
+      });
+      return select;
+    }
+
+    // Crea selector de pane o posición visual de capa.
+    function crearSelectorPane(capaConfig) {
+      const select = document.createElement('select');
+      select.className = 'form-select';
+      select.id = `pane-${capaConfig.id}`;
+      SIG_CONFIG.panes.forEach(pane => {
+        const option = document.createElement('option');
+        option.value = pane.id;
+        option.textContent = pane.nombre;
+        if (pane.id === capaConfig.pane) option.selected = true;
+        select.appendChild(option);
+      });
+      select.addEventListener('change', async () => {
+        capaConfig.pane = select.value;
+        await actualizarEstiloCapa(capaConfig, true);
+      });
+      return select;
+    }
+
+    // Construye el bloque de configuración plegable de una capa.
+    function crearPanelConfiguracionCapa(capaConfig) {
+      const cuerpo = document.createElement('div');
+      cuerpo.className = 'layer-settings';
+
+      const colorCapa = crearSelectorColor({
+        id: `color-capa-${capaConfig.id}`,
+        etiqueta: 'Color de capa',
+        valorInicial: capaConfig.colorCapa,
+        onChange: async color => { capaConfig.colorCapa = color; await actualizarEstiloCapa(capaConfig); }
+      });
+
+      const colorLinea = crearSelectorColor({
+        id: `color-linea-${capaConfig.id}`,
+        etiqueta: 'Color de línea',
+        valorInicial: capaConfig.colorLinea,
+        onChange: async color => { capaConfig.colorLinea = color; await actualizarEstiloCapa(capaConfig); }
+      });
+
+      cuerpo.innerHTML = `
+        <div class="d-flex flex-column gap-3">
+          <div data-slot="color-capa"></div>
+          <div data-slot="color-linea"></div>
+          <div><label class="form-label fw-semibold mb-1" for="opacidad-${capaConfig.id}"><i class="bi bi-droplet-half me-1"></i>Opacidad / transparencia</label><div data-slot="opacidad"></div></div>
+          <div><label class="form-label fw-semibold mb-1" for="grosor-${capaConfig.id}"><i class="bi bi-rulers me-1"></i>Grosor de línea</label><div data-slot="grosor"></div></div>
+          <div><label class="form-label fw-semibold mb-1" for="pane-${capaConfig.id}"><i class="bi bi-list-ol me-1"></i>Posición de capa</label><div data-slot="pane"></div></div>
+        </div>`;
+
+      cuerpo.querySelector('[data-slot="color-capa"]').appendChild(colorCapa);
+      cuerpo.querySelector('[data-slot="color-linea"]').appendChild(colorLinea);
+      cuerpo.querySelector('[data-slot="opacidad"]').appendChild(crearSelectorOpacidad(capaConfig));
+      cuerpo.querySelector('[data-slot="grosor"]').appendChild(crearSelectorGrosor(capaConfig));
+      cuerpo.querySelector('[data-slot="pane"]').appendChild(crearSelectorPane(capaConfig));
+      return cuerpo;
+    }
+
+    // Crea una fila de capa con check y botón de configuración.
+    function crearItemCapa(capaConfig) {
+      const item = document.createElement('div');
+      item.className = 'layer-item';
+      const collapseId = `config-${capaConfig.id}`;
+
+      const encabezado = document.createElement('div');
+      encabezado.className = 'layer-header';
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'form-check-input m-0';
+      check.id = `check-${capaConfig.id}`;
+      check.checked = Boolean(capaConfig.activa);
+
+      const dot = document.createElement('span');
+      dot.className = 'layer-color-dot';
+      dot.id = `dot-${capaConfig.id}`;
+      dot.style.background = capaConfig.colorCapa;
+
+      const label = document.createElement('label');
+      label.className = 'form-check-label flex-grow-1 fw-semibold';
+      label.setAttribute('for', check.id);
+      label.textContent = capaConfig.nombre;
+
+      const botonConfig = document.createElement('button');
+      botonConfig.type = 'button';
+      botonConfig.className = 'btn btn-outline-secondary btn-sm rounded-circle';
+      botonConfig.setAttribute('data-bs-toggle', 'collapse');
+      botonConfig.setAttribute('data-bs-target', `#${collapseId}`);
+      botonConfig.title = 'Configurar capa';
+      botonConfig.innerHTML = '<i class="bi bi-gear"></i>';
+
+      check.addEventListener('change', async () => {
+        if (check.checked) await activarCapa(capaConfig);
+        else desactivarCapa(capaConfig);
+      });
+
+      encabezado.append(check, dot, label, botonConfig);
+      const collapse = document.createElement('div');
+      collapse.className = 'collapse';
+      collapse.id = collapseId;
+      collapse.appendChild(crearPanelConfiguracionCapa(capaConfig));
+      item.append(encabezado, collapse);
+      return item;
+    }
+
+    // Construye el panel lateral de capas desde configlayers.js.
+    function renderizarPanelCapas() {
+      const lista = qs('listaCapas');
+      if (!lista) return;
+      lista.innerHTML = '';
+      SIG_CONFIG.capas.forEach(capaConfig => lista.appendChild(crearItemCapa(capaConfig)));
+    }
+
+    // Control de zoom con incrementos pequeños.
+    function crearControlZoomSuave(pasoZoom) {
+      const control = L.control({ position: 'bottomright' });
+      control.onAdd = function (mapa) {
+        const contenedor = L.DomUtil.create('div', 'leaflet-control-zoom leaflet-bar leaflet-control');
+        const btnAcercar = L.DomUtil.create('a', 'leaflet-control-zoom-in', contenedor);
+        btnAcercar.href = '#';
+        btnAcercar.title = 'Acercar suavemente';
+        btnAcercar.innerHTML = '<span aria-hidden="true">+</span>';
+        const btnAlejar = L.DomUtil.create('a', 'leaflet-control-zoom-out', contenedor);
+        btnAlejar.href = '#';
+        btnAlejar.title = 'Alejar suavemente';
+        btnAlejar.innerHTML = '<span aria-hidden="true">−</span>';
+        L.DomEvent.disableClickPropagation(contenedor);
+        L.DomEvent.disableScrollPropagation(contenedor);
+        L.DomEvent.on(btnAcercar, 'click', L.DomEvent.stop).on(btnAcercar, 'click', () => mapa.setZoom(mapa.getZoom() + Number(pasoZoom || 0.25)));
+        L.DomEvent.on(btnAlejar, 'click', L.DomEvent.stop).on(btnAlejar, 'click', () => mapa.setZoom(mapa.getZoom() - Number(pasoZoom || 0.25)));
+        return contenedor;
+      };
+      return control;
+    }
+
+    // Inicializa mapa, panes, capas y módulo externo de filtros.
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!window.SIG_CONFIG) {
+        mostrarAvisoCapas('danger', 'No cargó configlayers.js.');
+        return;
+      }
+
+      const mapa = L.map('mapaSIG', {
+        zoomControl: false,
+        preferCanvas: true,
+        minZoom: SIG_CONFIG.mapa.zoomMinimo,
+        maxZoom: SIG_CONFIG.mapa.zoomMaximo,
+        zoomSnap: SIG_CONFIG.mapa.zoomSnap || 0.25,
+        zoomDelta: SIG_CONFIG.mapa.pasoZoom || 0.25,
+        wheelPxPerZoomLevel: SIG_CONFIG.mapa.ruedaZoomSensibilidad || 180
+      }).setView(SIG_CONFIG.mapa.centro, SIG_CONFIG.mapa.zoom);
+
+      SIG_STATE.mapa = mapa;
+      crearPanesLeaflet(mapa);
+      SIG_STATE.capaCasos = L.layerGroup().addTo(mapa);
+      crearControlZoomSuave(SIG_CONFIG.mapa.pasoZoom || 0.25).addTo(mapa);
+      mapa.on('click', abrirPopupDepartamentoFallback);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(mapa);
+
+      renderizarPanelCapas();
+      for (const capaConfig of SIG_CONFIG.capas.filter(capa => capa.activa)) {
+        await activarCapa(capaConfig);
+      }
+
+      if (window.SIG_DATOS?.inicializar) {
+        await window.SIG_DATOS.inicializar();
+      }
+
+      qs('btnAbrirMapaCalor')?.addEventListener('click', () => {
+        window.setTimeout(() => {
+          const target = qs('bloqueMapaCalorSIG');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+      });
+
+      window.addEventListener('resize', () => mapa.invalidateSize());
+      qs('panelCapas')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
+      qs('panelFiltros')?.addEventListener('hidden.bs.offcanvas', () => mapa.invalidateSize());
+    });
+  </script>
+</body>
+</html>

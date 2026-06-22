@@ -647,7 +647,6 @@
             <i class="bi bi-check-circle-fill mt-1"></i>
             <div>
               <div class="fw-bold">Datos cargados correctamente</div>
-              <div>La información base de casos_2026 está disponible.</div>
             </div>
           </div>
         </div>
@@ -754,8 +753,7 @@
 
       <div class="filter-block">
         <div class="filter-block-title"><i class="bi bi-geo-alt"></i>Mapa</div>
-        <div class="small text-muted mb-2">Los puntos se dibujan encima de todas las capas. El mapa usa los filtros aplicados.</div>
-        <div class="d-grid gap-2">
+          <div class="d-grid gap-2">
           <button class="btn btn-primary filter-action-btn" id="btnMostrarTodosCasos" type="button">
             <i class="bi bi-eye me-1"></i>Mostrar casos en mapa
           </button>
