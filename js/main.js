@@ -879,20 +879,45 @@ async function loadYears(selYear, supabaseClient) {
 }
 
 async function loadMacrotipos(selMacro, supabaseClient) {
+  if (!selMacro) return [];
+
   selMacro.innerHTML = `<option value="">Cargando…</option>`;
-  const { data, error } = await supabaseClient.rpc(RPC_MACROTIPOS);
+
+  const { data, error } = await supabaseClient
+    .from(TBL_TIPOS)
+    .select('tipos')
+    .not('tipos', 'is', null)
+    .order('tipos', { ascending: true });
+
   if (error) {
-    console.error(RPC_MACROTIPOS, error);
-    showAlert('danger', error.message || 'Error macrotipos');
+    console.error('loadMacrotipos', error);
+    showAlert('danger', error.message || 'Error lista macrotipos');
     selMacro.innerHTML = `<option value="">Error</option>`;
-    return;
+    return [];
   }
-  const list = (data || [])
-    .map(x => ({ value: String(x?.value ?? x?.tipos ?? x?.label ?? '').trim(), label: String(x?.label ?? x?.value ?? x?.tipos ?? '').trim() }))
-    .filter(x => x.value);
+
+  const seen = new Set();
+  const unique = [];
+
+  for (const row of (data || [])) {
+    const v = String(row.tipos || '').trim();
+    if (!v) continue;
+
+    const k = normLocal(v);
+    if (!k || seen.has(k)) continue;
+
+    seen.add(k);
+    unique.push(v);
+  }
+
   selMacro.innerHTML = '';
   selMacro.appendChild(new Option('— Selecciona —', ''));
-  for (const it of list) selMacro.appendChild(new Option(it.label, it.value));
+
+  for (const v of unique) {
+    selMacro.appendChild(new Option(v, v));
+  }
+
+  return unique;
 }
 
 async function loadSubtiposCatalog(sel, supabaseClient) {
